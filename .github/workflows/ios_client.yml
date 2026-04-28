@@ -65,7 +65,7 @@ jobs:
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
         run: |
-          pip3 install PyJWT cryptography --quiet
+          pip3 install PyJWT cryptography --quiet --break-system-packages
           python3 scripts/purge_dist_certs.py
 
       - name: Flutter build iOS
