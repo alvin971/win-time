@@ -20,9 +20,13 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.0'
+          flutter-version: '3.32.x'
           channel: stable
           cache: true
+
+      - name: Flutter pub get — shared_core
+        working-directory: packages/shared_core
+        run: flutter pub get
 
       - name: Flutter pub get
         working-directory: win_time_pro_mobilapp
