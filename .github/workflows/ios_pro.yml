@@ -7,6 +7,7 @@ on:
       - 'win_time_pro_mobilapp/**'
       - 'packages/shared_core/**'
   workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   deploy:
