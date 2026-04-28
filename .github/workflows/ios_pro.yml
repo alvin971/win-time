@@ -68,6 +68,22 @@ jobs:
           pip3 install PyJWT cryptography --quiet --break-system-packages
           python3 scripts/purge_dist_certs.py
 
+
+      - name: Select Xcode 26
+        run: |
+          XCODE26=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XCODE26" ]; then
+            sudo xcode-select -switch "$XCODE26/Contents/Developer"
+            echo "Selected Xcode 26: $XCODE26"
+          else
+            echo "Xcode 26 not found, listing available:"
+            ls /Applications/Xcode*.app 2>/dev/null
+          fi
+          xcodebuild -version
+
+      - name: Build runner
+        working-directory: win_time_pro_mobilapp
+        run: dart run build_runner build --delete-conflicting-outputs
       - name: Flutter build iOS
         working-directory: win_time_pro_mobilapp
         run: flutter build ios --release --no-codesign

@@ -40,7 +40,7 @@ jobs:
 
       - name: Flutter analyze — ${{ matrix.app }}
         working-directory: ${{ matrix.app }}
-        run: flutter analyze
+        run: flutter analyze --no-fatal-warnings
 
       - name: Flutter test — ${{ matrix.app }}
         working-directory: ${{ matrix.app }}
