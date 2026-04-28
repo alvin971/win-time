@@ -1,4 +1,4 @@
-name: iOS — Win Time Client → TestFlight
+name: iOS — Win Time Client — TestFlight
 
 on:
   push:
@@ -66,37 +66,7 @@ jobs:
           APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
         run: |
           pip3 install PyJWT cryptography --quiet
-          python3 << 'PYEOF'
-import jwt, time, json, subprocess, os, sys
-
-KEY_ID    = os.environ["APP_STORE_KEY_ID"]
-ISSUER_ID = os.environ["APP_STORE_ISSUER_ID"]
-PEM       = os.environ["APP_STORE_API_KEY_CONTENT"]
-
-token = jwt.encode(
-    {"iss": ISSUER_ID, "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
-    PEM, algorithm="ES256", headers={"kid": KEY_ID}
-)
-
-BASE    = "https://api.appstoreconnect.apple.com"
-HEADERS = ["-H", f"Authorization: Bearer {token}", "-H", "Content-Type: application/json"]
-
-def asc_get(path):
-    r = subprocess.run(["curl", "-s", "--max-time", "30"] + HEADERS + [f"{BASE}{path}"], capture_output=True, text=True)
-    return json.loads(r.stdout)
-
-def asc_delete(cert_id):
-    r = subprocess.run(["curl", "-s", "--max-time", "30", "-X", "DELETE", "-o", "/dev/null", "-w", "%{http_code}"] + HEADERS + [f"{BASE}/v1/certificates/{cert_id}"], capture_output=True, text=True)
-    return r.stdout.strip()
-
-data  = asc_get("/v1/certificates?limit=20")
-certs = data.get("data", [])
-dist  = [c for c in certs if "DISTRIBUTION" in c["attributes"]["certificateType"]]
-print(f"Certs DISTRIBUTION : {len(dist)}")
-for c in dist:
-    status = asc_delete(c["id"])
-    print(f"  {'OK' if status == '204' else 'ERR'} {c['id']} → HTTP {status}")
-PYEOF
+          python3 scripts/purge_dist_certs.py
 
       - name: Flutter build iOS
         working-directory: win_time_mobilapp
