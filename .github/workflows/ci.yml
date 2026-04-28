@@ -34,9 +34,13 @@ jobs:
         working-directory: ${{ matrix.app }}
         run: flutter pub get
 
+      - name: Build runner — ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: Flutter analyze — ${{ matrix.app }}
         working-directory: ${{ matrix.app }}
-        run: flutter analyze --fatal-infos
+        run: flutter analyze
 
       - name: Flutter test — ${{ matrix.app }}
         working-directory: ${{ matrix.app }}

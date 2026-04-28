@@ -1,6 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'dart:io' show Platform;
 
 /// Service de gestion des notifications push (Firebase)
 /// Gère les notifications en foreground, background et terminated

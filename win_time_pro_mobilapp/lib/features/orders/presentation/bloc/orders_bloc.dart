@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'orders_event.dart';
 import 'orders_state.dart';
