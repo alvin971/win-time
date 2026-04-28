@@ -46,3 +46,4 @@ GoogleService-Info.plist
 
 # macOS
 **/macos/Flutter/GeneratedPluginRegistrant.swift
+.git-credentials
