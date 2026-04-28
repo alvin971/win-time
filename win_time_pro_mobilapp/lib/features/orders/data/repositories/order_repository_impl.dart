@@ -25,7 +25,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final orders = await _remote.getActiveOrders(restaurantId: restaurantId);
       return Right(orders);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -49,7 +49,7 @@ class OrderRepositoryImpl implements OrderRepository {
       );
       return Right(orders);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -63,7 +63,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final order = await _remote.getOrderById(orderId: orderId);
       return Right(order);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -81,7 +81,7 @@ class OrderRepositoryImpl implements OrderRepository {
       );
       return Right(order);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -96,7 +96,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final order = await _remote.rejectOrder(orderId: orderId, reason: reason);
       return Right(order);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -110,7 +110,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final order = await _remote.markOrderReady(orderId: orderId);
       return Right(order);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -124,7 +124,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final order = await _remote.completeOrder(orderId: orderId);
       return Right(order);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -139,7 +139,7 @@ class OrderRepositoryImpl implements OrderRepository {
       await _remote.updatePreparationTime(orderId: orderId, newTime: newTime);
       return const Right(null);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }

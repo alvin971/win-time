@@ -1,0 +1,77 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build, signe et upload vers TestFlight"
+  lane :release do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_KEY_ID"],
+      issuer_id: ENV["APP_STORE_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_API_KEY_PATH"],
+      duration: 1200,
+      in_house: false,
+    )
+
+    keychain_name = "ci_keychain"
+    keychain_password = "ci_keychain_password"
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false,
+    )
+
+    cert(
+      api_key: api_key,
+      team_id: ENV["APPLE_TEAM_ID"],
+      keychain_path: "~/Library/Keychains/#{keychain_name}-db",
+      keychain_password: keychain_password,
+      force: true,
+    )
+
+    sigh(
+      api_key: api_key,
+      app_identifier: ENV["BUNDLE_ID"],
+      team_id: ENV["APPLE_TEAM_ID"],
+      force: true,
+    )
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      team_id: ENV["APPLE_TEAM_ID"],
+      bundle_identifier: ENV["BUNDLE_ID"],
+      code_sign_identity: "iPhone Distribution",
+      profile_uuid: ENV["SIGH_UUID"],
+    )
+
+    increment_build_number(
+      xcodeproj: "Runner.xcodeproj",
+      build_number: Time.now.strftime("%Y%m%d%H%M"),
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          ENV["BUNDLE_ID"] => ENV["SIGH_UUID"],
+        },
+        signingStyle: "manual",
+        teamID: ENV["APPLE_TEAM_ID"],
+      },
+      output_directory: "./build",
+      output_name: "WinTime.ipa",
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "./build/WinTime.ipa",
+      skip_waiting_for_build_processing: true,
+    )
+
+    UI.success("Win Time Client uploadé sur TestFlight !")
+  end
+end

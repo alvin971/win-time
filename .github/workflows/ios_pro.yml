@@ -1,0 +1,109 @@
+name: iOS — Win Time Pro → TestFlight
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'win_time_pro_mobilapp/**'
+      - 'packages/shared_core/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Upload to TestFlight
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        working-directory: win_time_pro_mobilapp
+        run: flutter pub get
+
+      - name: Write App Store Connect API Key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_API_KEY_CONTENT }}" > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_KEY_ID }}.p8
+
+      - name: Create Fastlane Appfile
+        run: |
+          cat > win_time_pro_mobilapp/ios/fastlane/Appfile << EOF
+          app_identifier "${{ secrets.BUNDLE_ID_PRO }}"
+          team_id "${{ secrets.APPLE_TEAM_ID }}"
+          EOF
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: win_time_pro_mobilapp/ios
+
+      - name: Install Fastlane
+        run: bundle install
+        working-directory: win_time_pro_mobilapp/ios
+
+      - name: Install CocoaPods
+        run: pod install --repo-update
+        working-directory: win_time_pro_mobilapp/ios
+
+      - name: Purge orphan Distribution certificates
+        env:
+          APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+          APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+          APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
+        run: |
+          pip3 install PyJWT cryptography --quiet
+          python3 << 'PYEOF'
+import jwt, time, json, subprocess, os, sys
+
+KEY_ID    = os.environ["APP_STORE_KEY_ID"]
+ISSUER_ID = os.environ["APP_STORE_ISSUER_ID"]
+PEM       = os.environ["APP_STORE_API_KEY_CONTENT"]
+
+token = jwt.encode(
+    {"iss": ISSUER_ID, "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
+    PEM, algorithm="ES256", headers={"kid": KEY_ID}
+)
+
+BASE    = "https://api.appstoreconnect.apple.com"
+HEADERS = ["-H", f"Authorization: Bearer {token}", "-H", "Content-Type: application/json"]
+
+def asc_get(path):
+    r = subprocess.run(["curl", "-s", "--max-time", "30"] + HEADERS + [f"{BASE}{path}"], capture_output=True, text=True)
+    return json.loads(r.stdout)
+
+def asc_delete(cert_id):
+    r = subprocess.run(["curl", "-s", "--max-time", "30", "-X", "DELETE", "-o", "/dev/null", "-w", "%{http_code}"] + HEADERS + [f"{BASE}/v1/certificates/{cert_id}"], capture_output=True, text=True)
+    return r.stdout.strip()
+
+data  = asc_get("/v1/certificates?limit=20")
+certs = data.get("data", [])
+dist  = [c for c in certs if "DISTRIBUTION" in c["attributes"]["certificateType"]]
+print(f"Certs DISTRIBUTION : {len(dist)}")
+for c in dist:
+    status = asc_delete(c["id"])
+    print(f"  {'OK' if status == '204' else 'ERR'} {c['id']} → HTTP {status}")
+PYEOF
+
+      - name: Flutter build iOS
+        working-directory: win_time_pro_mobilapp
+        run: flutter build ios --release --no-codesign
+
+      - name: Fastlane release
+        run: bundle exec fastlane ios release
+        working-directory: win_time_pro_mobilapp/ios
+        env:
+          APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+          APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+          APP_STORE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_KEY_ID }}.p8
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUNDLE_ID: ${{ secrets.BUNDLE_ID_PRO }}

@@ -34,10 +34,10 @@ class AuthRepositoryImpl implements AuthRepository {
       await _local.saveUser(result.user);
       _dioClient.setAuthToken(result.accessToken);
       return Right(result.user);
-    } on UnauthorizedException catch (e) {
-      return Left(AuthenticationFailure(message: e.message));
+    } on AuthenticationException catch (e) {
+      return Left(AuthenticationFailure(message: e.message, code: e.code));
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -69,7 +69,7 @@ class AuthRepositoryImpl implements AuthRepository {
       _dioClient.setAuthToken(result.accessToken);
       return Right(result.user);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -96,7 +96,7 @@ class AuthRepositoryImpl implements AuthRepository {
       _dioClient.setAuthToken(token);
       return Right(user);
     } on CacheException {
-      return const Left(AuthenticationFailure());
+      return const Left(AuthenticationFailure(message: 'Session expirée'));
     }
   }
 
@@ -119,9 +119,9 @@ class AuthRepositoryImpl implements AuthRepository {
       _dioClient.setAuthToken(newToken);
       return Right(newToken);
     } on CacheException {
-      return const Left(AuthenticationFailure());
+      return const Left(AuthenticationFailure(message: 'Session expirée'));
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message));
+      return Left(ServerFailure(message: e.message, code: e.code));
     }
   }
 
@@ -131,7 +131,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _remote.forgotPassword(email: email);
       return const Right(null);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message));
+      return Left(ServerFailure(message: e.message, code: e.code));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(message: e.message));
     }
@@ -146,7 +146,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _remote.resetPassword(token: token, newPassword: newPassword);
       return const Right(null);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message));
+      return Left(ServerFailure(message: e.message, code: e.code));
     }
   }
 
@@ -156,7 +156,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _remote.verifyEmail(token: token);
       return const Right(null);
     } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message));
+      return Left(ServerFailure(message: e.message, code: e.code));
     }
   }
 }
