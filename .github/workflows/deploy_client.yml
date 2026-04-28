@@ -1,0 +1,96 @@
+name: Deploy — Win Time Client
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'win_time_mobilapp/**'
+      - 'packages/shared_core/**'
+  workflow_dispatch:
+
+jobs:
+  build_android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        working-directory: win_time_mobilapp
+        run: flutter pub get
+
+      - name: Build APK (release)
+        working-directory: win_time_mobilapp
+        run: |
+          flutter build apk --release \
+            --obfuscate \
+            --split-debug-info=build/debug-info \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }} \
+            --dart-define=WS_BASE_URL=${{ secrets.WS_BASE_URL }} \
+            --dart-define=STRIPE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }} \
+            --dart-define=GOOGLE_MAPS_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-time-client-apk
+          path: win_time_mobilapp/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        if: ${{ secrets.FIREBASE_APP_ID_CLIENT != '' }}
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID_CLIENT }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: beta-testers
+          file: win_time_mobilapp/build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: "Build automatique depuis ${{ github.sha }}"
+
+  build_ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        working-directory: win_time_mobilapp
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        working-directory: win_time_mobilapp
+        run: |
+          flutter build ios --release --no-codesign \
+            --obfuscate \
+            --split-debug-info=build/debug-info \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }} \
+            --dart-define=WS_BASE_URL=${{ secrets.WS_BASE_URL }} \
+            --dart-define=STRIPE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }} \
+            --dart-define=GOOGLE_MAPS_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-time-client-ios
+          path: win_time_mobilapp/build/ios/iphoneos/Runner.app

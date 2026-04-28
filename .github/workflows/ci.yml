@@ -1,0 +1,51 @@
+name: CI — Lint & Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  analyze_and_test:
+    name: Analyze & Test (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [win_time_mobilapp, win_time_pro_mobilapp]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies — shared_core
+        working-directory: packages/shared_core
+        run: flutter pub get
+
+      - name: Get dependencies — ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: flutter pub get
+
+      - name: Flutter analyze — ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: flutter analyze --fatal-infos
+
+      - name: Flutter test — ${{ matrix.app }}
+        working-directory: ${{ matrix.app }}
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: matrix.app == 'win_time_mobilapp'
+        with:
+          file: ${{ matrix.app }}/coverage/lcov.info
+          flags: ${{ matrix.app }}
+          fail_ci_if_error: false
