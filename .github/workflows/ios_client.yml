@@ -83,9 +83,7 @@ jobs:
 
       - name: Build runner
         working-directory: win_time_mobilapp
-        run: |
-          flutter pub upgrade retrofit retrofit_generator
-          dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build --delete-conflicting-outputs
       - name: Flutter build iOS
         working-directory: win_time_mobilapp
         run: flutter build ios --release --no-codesign
