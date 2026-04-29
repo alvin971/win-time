@@ -22,14 +22,6 @@ platform :ios do
       lock_when_sleeps: false,
     )
 
-    produce(
-      api_key: api_key,
-      app_identifier: ENV["BUNDLE_ID"],
-      app_name: "Win Time",
-      team_id: ENV["APPLE_TEAM_ID"],
-      skip_itc: true,
-    )
-
     cert(
       api_key: api_key,
       team_id: ENV["APPLE_TEAM_ID"],
