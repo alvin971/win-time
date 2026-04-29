@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../config/app_config.dart';
 import '../errors/exceptions.dart';
 
@@ -23,14 +22,6 @@ class ApiClient {
 
     // Intercepteurs
     _dio.interceptors.addAll([
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-      ),
       _AuthInterceptor(),
       _ErrorInterceptor(),
     ]);
