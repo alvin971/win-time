@@ -1,37 +1,57 @@
-import 'package:injectable/injectable.dart';
-import 'package:retrofit/retrofit.dart';
 import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
 import '../models/order_model.dart';
 
-part 'order_remote_datasource.g.dart';
-
-@singleton
-@RestApi(baseUrl: 'https://api.wintime.com/v1')
 abstract class OrderRemoteDataSource {
-  @factoryMethod
-  factory OrderRemoteDataSource(Dio dio, {String? baseUrl}) = _OrderRemoteDataSource;
+  Future<OrderModel> createOrder(Map<String, dynamic> orderData);
+  Future<List<OrderModel>> getMyOrders({int page, int pageSize});
+  Future<OrderModel> getOrderById(String orderId);
+  Future<OrderModel> cancelOrder(String orderId);
+  Future<OrderModel> updateOrderStatus(String orderId, Map<String, dynamic> statusData);
+  Future<OrderModel> markOrderAsReady(String orderId);
+}
 
-  @POST('/orders')
-  Future<OrderModel> createOrder(@Body() Map<String, dynamic> orderData);
+@Singleton(as: OrderRemoteDataSource)
+class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
+  OrderRemoteDataSourceImpl(this._dio);
+  final Dio _dio;
 
-  @GET('/orders/me')
-  Future<List<OrderModel>> getMyOrders({
-    @Query('page') int page = 1,
-    @Query('page_size') int pageSize = 20,
-  });
+  @override
+  Future<OrderModel> createOrder(Map<String, dynamic> orderData) async {
+    final response = await _dio.post<Map<String, dynamic>>('/orders', data: orderData);
+    return OrderModel.fromJson(response.data!);
+  }
 
-  @GET('/orders/{id}')
-  Future<OrderModel> getOrderById(@Path('id') String orderId);
+  @override
+  Future<List<OrderModel>> getMyOrders({int page = 1, int pageSize = 20}) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/orders/me',
+      queryParameters: {'page': page, 'page_size': pageSize},
+    );
+    return (response.data as List).map((e) => OrderModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
 
-  @PATCH('/orders/{id}/cancel')
-  Future<OrderModel> cancelOrder(@Path('id') String orderId);
+  @override
+  Future<OrderModel> getOrderById(String orderId) async {
+    final response = await _dio.get<Map<String, dynamic>>('/orders/$orderId');
+    return OrderModel.fromJson(response.data!);
+  }
 
-  @PATCH('/orders/{id}/status')
-  Future<OrderModel> updateOrderStatus(
-    @Path('id') String orderId,
-    @Body() Map<String, dynamic> statusData,
-  );
+  @override
+  Future<OrderModel> cancelOrder(String orderId) async {
+    final response = await _dio.patch<Map<String, dynamic>>('/orders/$orderId/cancel');
+    return OrderModel.fromJson(response.data!);
+  }
 
-  @PATCH('/orders/{id}/mark-ready')
-  Future<OrderModel> markOrderAsReady(@Path('id') String orderId);
+  @override
+  Future<OrderModel> updateOrderStatus(String orderId, Map<String, dynamic> statusData) async {
+    final response = await _dio.patch<Map<String, dynamic>>('/orders/$orderId/status', data: statusData);
+    return OrderModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<OrderModel> markOrderAsReady(String orderId) async {
+    final response = await _dio.patch<Map<String, dynamic>>('/orders/$orderId/mark-ready');
+    return OrderModel.fromJson(response.data!);
+  }
 }
