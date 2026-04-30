@@ -8,6 +8,10 @@ on:
       - 'packages/shared_core/**'
   workflow_dispatch:
 
+concurrency:
+  group: ios-signing
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Build & Upload to TestFlight
