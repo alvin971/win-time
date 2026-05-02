@@ -171,14 +171,36 @@ Coût : +5-15 min par run. Bénéfice : élimine définitivement la race conditi
 
 **Pas encore commit/push** parce qu'un push relance les workflows (paths-triggered) et révoquerait le cert de Client iter3 pendant qu'Apple le processe — ce qui invaliderait notre test.
 
-## Itération 4 — Planifiée
+## Itération 4 — 2026-05-02 14:21 → en cours
 
-1. ⏳ Attendre 20-25 min après Client iter3 upload (14:07:35) → vers 14:30
-2. Run asc_check workflow → si Client iter3 VALID → théorie cert-revocation confirmée
-3. Push le commit Fastfile (skip_waiting:false)
-4. Trigger Pro workflow_dispatch → attendre VALID dans ASC (fastlane wait inside)
-5. Trigger Client workflow_dispatch → attendre VALID dans ASC
-6. Vérifier les 2 builds VALID dans TestFlight + invitation `monopoly97160@gmail.com`
+- **Commit** `93daeef` : `skip_waiting_for_build_processing: false` dans les 2 Fastfiles
+- **Auto-trigger** par push : Client `25254125854` (in_progress), Pro `25254125859` (queued)
+- **Avec skip_waiting:false** : fastlane attend qu'Apple ait FINI de processer avant de rendre la main → on verra l'erreur Apple vraie
+
+### Comparaison Mental ET (qui marche) vs win-time (qui échoue)
+
+Via le thermomètre étendu, les apps `win-time` et `win-time-pro` ont **EXACTEMENT le même setup ASC** que Mental ET (qui marche) :
+- `contentRights=None` (les 3)
+- `betaAppReviewDetail` : contactEmail=None, contactFirstName=None (les 3)
+- `betaLicenseAgreement.text=''` (les 3)
+- `appStoreState=PREPARE_FOR_SUBMISSION` (les 3)
+
+Mental ET a 3 builds VALID (avril 9-10). Win-time/Pro ont 0 builds. **Le métadata ASC n'est donc PAS la cause** — la différence est dans l'IPA / le bundle ID / le pipeline de signing.
+
+### Apps visibles via la clé ASC (toutes au même team)
+
+- 6764433401 — win-time (`0for0.com`) — 0 builds
+- 6764434885 — win-time-pro (`com.mycompany.louppartner3`) — 0 builds
+- 6761692391 — Mental E.T. (`com.mentalite.app`) — 3 builds VALID
+- 6746979305 — File d'Attente Hospitalière (`com.alvinkuyo.hospitalqueue`)
+- 6738326971 — Loup Partner (`com.mycompany.louppartner2`)
+- 6670455660 — Loup Partner Old (`com.mycompany.louppartner`)
+
+Note : `0for0.com` n'est pas un bundle ID au format reverse-DNS standard (devrait être `com.0for0`). Apple a accepté l'enregistrement de l'app mais pourrait rejeter en post-processing.
+
+### Plan en cours
+
+Attendre que Client iter4 finisse complètement (avec l'attente Apple inside fastlane). Si l'upload réussit ET le wait Apple passe → Apple dira pourquoi il rejetait (ou tout passera enfin). Si l'upload réussit mais Apple timeout/rejette → fastlane imprimera la vraie erreur Apple, qu'on n'a jamais eue jusqu'ici.
 
 ## Leçons apprises (durable)
 
