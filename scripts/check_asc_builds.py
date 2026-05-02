@@ -171,3 +171,46 @@ for app_name, app_id in APPS.items():
         print(f"  {app_name}: name={a.get('name')} bundleId={a.get('bundleId')} sku={a.get('sku')} contentRights={a.get('contentRightsDeclaration')}")
     else:
         print(f"  {app_name}: HTTP {code}")
+
+# --- Diagnostic supplémentaire iter 4 : appInfos, appPrivacy, betaAppReviewDetails ---
+print("\n--- App Infos (état info / requirements ASC) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/appInfos?fields[appInfos]=appStoreState,appStoreAgeRating,brazilAgeRating,kidsAgeBand,primaryCategory,primarySubcategoryOne,primarySubcategoryTwo,secondaryCategory,secondarySubcategoryOne,secondarySubcategoryTwo,state")
+    if code == 200:
+        infos = payload.get("data", [])
+        for info in infos:
+            a = info.get("attributes", {})
+            print(f"  {app_name}: appStoreState={a.get('appStoreState')} state={a.get('state')}")
+    else:
+        print(f"  {app_name}: appInfos HTTP {code}")
+
+print("\n--- Beta App Review Detail (1st build review status) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/betaAppReviewDetail")
+    if code == 200:
+        a = payload.get("data", {}).get("attributes", {}) if payload.get("data") else {}
+        print(f"  {app_name}: contactEmail={a.get('contactEmail')} demoAccountRequired={a.get('demoAccountRequired')} contactFirstName={a.get('contactFirstName')}")
+    else:
+        print(f"  {app_name}: HTTP {code}")
+
+print("\n--- Beta License Agreement (TF EULA accepted?) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/betaLicenseAgreement")
+    if code == 200:
+        a = payload.get("data", {}).get("attributes", {}) if payload.get("data") else {}
+        license_text = (a.get('agreementText') or '')[:80]
+        print(f"  {app_name}: licenseText={license_text!r}")
+    else:
+        print(f"  {app_name}: HTTP {code}")
+
+print("\n--- Test sans filter — tous les builds liés (alternative GET) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/builds?limit=5&fields[builds]=version,uploadedDate,processingState,expired")
+    if code == 200:
+        builds = payload.get("data", [])
+        print(f"  {app_name}: {len(builds)} build(s) via /apps/{{id}}/builds")
+        for b in builds[:3]:
+            a = b.get("attributes", {})
+            print(f"    {a.get('version')} {fmt_date(a.get('uploadedDate'))} {a.get('processingState')} expired={a.get('expired')}")
+    else:
+        print(f"  {app_name}: HTTP {code} body={json.dumps(payload, indent=2)[:200]}")
