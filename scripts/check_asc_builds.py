@@ -115,3 +115,59 @@ for app_name, app_id in APPS.items():
 
 if global_failed:
     sys.exit(1)
+
+# --- Diagnostic supplémentaire : voir TOUS les builds du compte (sans filter app) ---
+print("--- Diagnostic complet : tous les builds du compte (max 20 plus récents) ---")
+code, payload = asc_get(
+    "/v1/builds?sort=-uploadedDate&limit=20"
+    "&fields[builds]=version,uploadedDate,expired,processingState,buildAudienceType"
+    "&include=app&fields[apps]=name,bundleId"
+)
+if code != 200:
+    print(f"  ❌ Builds (no filter) HTTP {code}")
+else:
+    builds = payload.get("data", [])
+    apps_lookup = {a["id"]: a["attributes"] for a in payload.get("included", []) if a["type"] == "apps"}
+    if not builds:
+        print("  ⚠️  Aucun build dans tout le compte (toutes apps confondues).")
+    else:
+        print(f"  {'App':<40} {'Version':<14} {'Uploaded':<22} {'State':<14}")
+        for b in builds:
+            a = b.get("attributes", {})
+            app_rel = b.get("relationships", {}).get("app", {}).get("data", {})
+            app_id = app_rel.get("id", "?")
+            app_attr = apps_lookup.get(app_id, {})
+            label = f"{app_attr.get('name','?')} ({app_attr.get('bundleId','?')})"
+            print(
+                f"  {label[:39]:<40} "
+                f"{a.get('version','?'):<14} "
+                f"{fmt_date(a.get('uploadedDate')):<22} "
+                f"{a.get('processingState','?'):<14}"
+            )
+
+# --- Diagnostic : preReleaseVersions par app ---
+print("\n--- Pre-release versions ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(
+        f"/v1/apps/{app_id}/preReleaseVersions"
+        "?sort=-version&limit=5"
+        "&fields[preReleaseVersions]=version,platform"
+    )
+    if code != 200:
+        print(f"  {app_name}: ❌ HTTP {code}")
+        continue
+    versions = payload.get("data", [])
+    if not versions:
+        print(f"  {app_name}: ⚠️  aucune preReleaseVersion")
+    else:
+        print(f"  {app_name}: {len(versions)} version(s) — {[v['attributes']['version'] for v in versions]}")
+
+# --- Diagnostic : Apps state ---
+print("\n--- État des apps ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}?fields[apps]=name,bundleId,sku,primaryLocale,contentRightsDeclaration")
+    if code == 200:
+        a = payload.get("data", {}).get("attributes", {})
+        print(f"  {app_name}: name={a.get('name')} bundleId={a.get('bundleId')} sku={a.get('sku')} contentRights={a.get('contentRightsDeclaration')}")
+    else:
+        print(f"  {app_name}: HTTP {code}")
