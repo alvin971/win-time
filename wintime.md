@@ -136,13 +136,49 @@ Diff Info.plist mentality (qui marche) vs win-time :
 
 **Action décidée pour itération 3** : ajouter `<key>ITSAppUsesNonExemptEncryption</key><false/>` aux deux Info.plist. Patch déjà appliqué localement, **commit en attente** (on ne pousse PAS pendant que le run Pro est en cours pour ne pas relancer un build sur du code mi-modifié).
 
-## Itération 3 — En cours (déclenchée après Pro de l'itération 2)
+## Itération 3 — 2026-05-02 13:25 → 14:07 UTC
 
-- **Plan** :
-  1. Attendre fin de Pro `25252030787`
-  2. Si Pro upload OK : attendre 5-10 min de processing Apple, run thermometer local (via workflow_dispatch d'un workflow rapide ou via la prochaine étape)
-  3. Si builds toujours absents → commit Info.plist + push + retrigger les deux workflows
-  4. Si builds VALID apparaissent → c'était juste qu'Apple n'avait pas eu le temps. Ajouter quand même `ITSAppUsesNonExemptEncryption` pour pérenniser.
+- **Commit** : `d0de3a2` (Info.plist fix) + `8ccfcef` (extended thermometer)
+- **Runs** :
+  - Pro `25252934648` : success, upload 13:35:46 (cert `58KCP9443C`)
+  - Client `25253127913` : success, upload 14:07:35 (cert `788R4FGQ27`)
+- **Thermomètre asc_check à 13:58 (23 min après Pro upload)** : 0 build pour win-time/win-time-pro. 20 builds VALID dans le compte (avril 9-16) appartenant à d'autres apps (Mental ET probable).
+- **État apps confirmé** : `win-time` (0for0.com, sku wintimeletgetit), `win-time-pro` (com.mycompany.louppartner3, sku wintimeproletsdpit). Beta groups OK.
+- **Pre-release versions HTTP 400** pour les deux apps → aucune preReleaseVersion enregistrée jamais → **Apple n'a JAMAIS validé un upload pour ces apps**.
+
+### Hypothèse forte identifiée (à valider Itération 4)
+
+**Cause racine probable** : la purge de certs DISTRIBUTION du workflow N+1 **révoque le cert utilisé par le workflow N pendant qu'Apple est ENCORE en train de processer son upload**.
+
+Timeline observée :
+- 13:35:46 — Pro iter3 uploade IPA signé avec cert `58KCP9443C`
+- 13:36 — Pro iter3 finit, libère concurrency lock
+- 13:38-13:42 — Client iter3 démarre, **purge ALL DISTRIBUTION certs** (incl. `58KCP9443C`)
+- 13:42+ — Apple finit le processing → "Validation failed (409) Certificate Revoked" → silent rejection
+- Pro iter3 ne paraît jamais dans ASC
+
+Le concurrency lock garantit la sérialisation des workflows mais **pas du processing Apple côté serveur** (qui est asynchrone, après upload).
+
+### Test de validation (en cours, 14:07:35 → 14:30+)
+
+Client iter3 a uploadé à 14:07:35 avec cert `788R4FGQ27`. **Aucun autre run n'est planifié**. Le cert reste valide. Si Apple a 20-30 min pour processer en paix, le build de Client iter3 doit apparaître dans ASC vers 14:25-14:30.
+
+### Fix structurel préparé (en stash, pas encore commit/push)
+
+Modification des deux Fastfiles : `skip_waiting_for_build_processing: false` au lieu de `true` dans `upload_to_testflight`. Force fastlane à attendre qu'Apple ait FINI le processing avant de rendre la main. Le concurrency group reste tenu pendant toute la durée du processing (5-15 min). Le run suivant ne peut donc plus lancer sa purge tant qu'Apple n'a pas fini.
+
+Coût : +5-15 min par run. Bénéfice : élimine définitivement la race condition cert vs Apple processing.
+
+**Pas encore commit/push** parce qu'un push relance les workflows (paths-triggered) et révoquerait le cert de Client iter3 pendant qu'Apple le processe — ce qui invaliderait notre test.
+
+## Itération 4 — Planifiée
+
+1. ⏳ Attendre 20-25 min après Client iter3 upload (14:07:35) → vers 14:30
+2. Run asc_check workflow → si Client iter3 VALID → théorie cert-revocation confirmée
+3. Push le commit Fastfile (skip_waiting:false)
+4. Trigger Pro workflow_dispatch → attendre VALID dans ASC (fastlane wait inside)
+5. Trigger Client workflow_dispatch → attendre VALID dans ASC
+6. Vérifier les 2 builds VALID dans TestFlight + invitation `monopoly97160@gmail.com`
 
 ## Leçons apprises (durable)
 

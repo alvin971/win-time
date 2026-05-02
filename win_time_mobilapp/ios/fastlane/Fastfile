@@ -66,10 +66,17 @@ platform :ios do
       output_name: "WinTime.ipa",
     )
 
+    # skip_waiting_for_build_processing: false -> on attend que Apple ait
+    # fini de processer le build AVANT de rendre la main. C'est crucial
+    # parce qu'à la fin du lane, le concurrency group "ios-signing" est
+    # libéré, et le run suivant (Pro) lance sa purge de certs DISTRIBUTION.
+    # Si on ne wait pas, la purge révoque le cert pendant qu'Apple analyse
+    # encore ce binaire → "Validation failed (409) Certificate Revoked"
+    # silencieusement et le build n'apparaît jamais dans TestFlight.
     upload_to_testflight(
       api_key: api_key,
       ipa: "./build/WinTime.ipa",
-      skip_waiting_for_build_processing: true,
+      skip_waiting_for_build_processing: false,
     )
 
     UI.success("Win Time Client uploadé sur TestFlight !")
