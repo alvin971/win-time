@@ -279,3 +279,28 @@ for app_name, app_id in APPS.items():
             print(f"    {k}: {len(d)} items")
         elif isinstance(d, dict):
             print(f"    {k}: {d.get('type')}/{d.get('id')}")
+
+# --- BuildUploads : peut révéler des uploads rejetés invisibles dans /builds ---
+print("\n--- BuildUploads (uploads en cours de processing ou rejetés) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/buildUploads?limit=20")
+    if code != 200:
+        print(f"  {app_name}: HTTP {code} body={json.dumps(payload, indent=2)[:300]}")
+        continue
+    uploads = payload.get("data", [])
+    if not uploads:
+        print(f"  {app_name}: ⚠️  aucun buildUpload (Apple n'a JAMAIS reçu de binaire valide pour cette app)")
+    else:
+        print(f"  {app_name}: {len(uploads)} buildUpload(s)")
+        for u in uploads[:5]:
+            a = u.get("attributes", {})
+            print(f"    {a}")
+
+# --- BuildBundles ---
+print("\n--- BuildBundles ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/relationships/builds?limit=20")
+    if code != 200:
+        print(f"  {app_name}: HTTP {code} body={json.dumps(payload, indent=2)[:200]}")
+        continue
+    print(f"  {app_name}: {len(payload.get('data',[]))} relationship items")
