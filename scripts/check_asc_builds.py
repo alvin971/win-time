@@ -239,3 +239,43 @@ for app_name, app_id in APPS.items():
         print(f"  {app_name}: ⚠️  aucune preReleaseVersion")
     else:
         print(f"  {app_name}: {len(versions)} version(s) — {[v['attributes']['version'] for v in versions]}")
+
+# --- Comparaison avec Mental E.T. (qui marche) ---
+print("\n--- Mental E.T. comparison (qui MARCHE — App ID 6761692391) ---")
+mental_id = "6761692391"
+code, payload = asc_get(f"/v1/apps/{mental_id}?fields[apps]=name,bundleId,sku,contentRightsDeclaration")
+if code == 200:
+    a = payload.get("data", {}).get("attributes", {})
+    print(f"  Mental ET: name={a.get('name')} bundleId={a.get('bundleId')} sku={a.get('sku')} contentRights={a.get('contentRightsDeclaration')}")
+code, payload = asc_get(f"/v1/apps/{mental_id}/builds?limit=3&fields[builds]=version,uploadedDate,processingState,expired")
+if code == 200:
+    builds = payload.get("data", [])
+    print(f"  Mental ET: {len(builds)} build(s)")
+    for b in builds[:3]:
+        a = b.get("attributes", {})
+        print(f"    {a.get('version')} {fmt_date(a.get('uploadedDate'))} {a.get('processingState')} expired={a.get('expired')}")
+code, payload = asc_get(f"/v1/apps/{mental_id}/betaAppReviewDetail")
+if code == 200:
+    a = payload.get("data", {}).get("attributes", {}) if payload.get("data") else {}
+    print(f"  Mental ET betaAppReviewDetail: contactEmail={a.get('contactEmail')} contactFirstName={a.get('contactFirstName')}")
+code, payload = asc_get(f"/v1/apps/{mental_id}/betaLicenseAgreement")
+if code == 200:
+    a = payload.get("data", {}).get("attributes", {}) if payload.get("data") else {}
+    license_text = (a.get('agreementText') or '')[:80]
+    print(f"  Mental ET betaLicenseAgreement: text={license_text!r}")
+
+# --- Détails relationships pour les apps win-time ---
+print("\n--- Win-time apps relationships (incl. ciAppOwner si dispo) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}?include=appInfos,builds,preReleaseVersions,betaAppReviewDetail,betaLicenseAgreement")
+    if code != 200:
+        print(f"  {app_name}: HTTP {code}")
+        continue
+    rel = payload.get("data", {}).get("relationships", {})
+    print(f"  {app_name}: relationships = {list(rel.keys())}")
+    for k, v in rel.items():
+        d = v.get("data")
+        if isinstance(d, list):
+            print(f"    {k}: {len(d)} items")
+        elif isinstance(d, dict):
+            print(f"    {k}: {d.get('type')}/{d.get('id')}")
