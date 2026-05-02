@@ -87,9 +87,30 @@ L'hypothèse **C** est très probable car `purge_dist_certs.py` ne vérifie PAS 
 | **C** | **Purge silently swallows ASC auth failures** | **🟡 Très probable** | Patch + retrigger |
 | **A** | **Rate-limit Apple post-Pro burst** | 🟡 Possible | Retrigger 3j plus tard |
 
+## Itération 1 — 2026-05-02 12:27 → 12:33 UTC
+
+- **Commit** : `448f6e4` — debug: thermomètre ASC + purge strict
+- **Runs** : Client `25251885818` (failure), Pro `25251886151` (cancelled à 6m41s avant qu'il atteigne le thermomètre)
+- **Étape qui échoue** : `ASC API thermometer (pre-flight auth check)` — la nouvelle étape
+- **Sortie clé** :
+  ```
+  ✅ ASC API auth OK (HTTP 200)        ← l'auth ASC FONCTIONNE
+  ❌ Builds query failed — HTTP 0      ← curl renvoie HTTP 0 (transport-level)
+  ```
+- **Diagnostic** : le `HTTP 0` de curl indique un échec côté curl, pas Apple. Le hic : ASC utilise des URLs avec brackets `filter[app]=...` et `fields[builds]=...` ; **curl par défaut interprète `[` `]` comme un glob pattern** et échoue silencieusement. Il faut `-g`/`--globoff`. La requête `/v1/apps?limit=1` (sans brackets) marchait → c'est confirmé.
+- **Hypothèse réfutée** : ❌ **C** (purge cachant un échec d'auth) — l'auth ASC marche très bien aujourd'hui avec la même clé. Le `0 certs trouvés` du Client le 30/04 doit avoir une autre cause (rate-limit, ou Apple a effectivement retiré le cert L2TZKNR297 entre temps — pourquoi reste mystère). Mais peu importe : le vrai test reste à venir.
+- **Hypothèse partiellement réfutée** : ❌ **A** (rate-limit Apple) — l'auth marche maintenant avec la même clé, donc pas un blocage durable.
+- **Action** : ajouter `-g`/`--globoff` aux 3 appels curl dans `check_asc_builds.py` et `purge_dist_certs.py` (asc_get, asc_delete). Re-trigger.
+
+## Itération 2 — En cours
+
+- **Commit attendu** : (à venir, après le fix du curl globbing)
+- **Objectif** : voir l'état réel des builds Pro (a-t-il été VALID ou rejeté ?) + faire passer Client jusqu'à `cert` pour reproduire/écarter l'erreur d'auth originelle.
+
 ## Leçons apprises (durable)
 
 À enrichir au fur et à mesure :
-- **(2026-05-02)** `purge_dist_certs.py` masque les erreurs d'authentification ASC silencieusement : si l'API renvoie 401/403, le script affiche "0 certs trouvés" comme si tout allait bien. Cela rend très difficile de diagnostiquer un problème d'auth quand il survient. → toujours valider le statut HTTP avant de parser le JSON.
-- **(2026-05-02)** Le concurrency group `ios-signing` a marché : Pro et Client se sont sérialisés correctement (Client a queued 30s après Pro). Donc la race condition cert est éliminée — c'est un autre problème.
-- **(2026-05-02)** `cert(force:true)` + `sigh(force:true)` accumule les vieux profils. Le log Pro montre 6 profils orphelins (NX7Z78C58H, 8J3UYHLS99, C7FDL2XSL4, HNRHHV5597, UF84LT4677, GDAVVQ7Z4J). À long terme, prévoir un script de purge de profils aussi (l'équivalent de `purge_dist_certs.py` pour `/v1/profiles`).
+- **(2026-05-02 — itération 1)** `curl` interprète par défaut les caractères `[` et `]` comme du **glob URL** (pour générer plusieurs URLs depuis un pattern). C'est invisible : il échoue avec "HTTP 0" ou un message peu clair. Pour toute requête ASC API qui utilise `filter[…]` ou `fields[…]`, **TOUJOURS** passer `-g` (alias `--globoff`) à curl. À retenir pour tous les futurs scripts d'intégration ASC.
+- **(2026-05-02)** `purge_dist_certs.py` masquait les erreurs d'auth silencieusement (data.get pattern). Patché en strict mode + debug header. Toute requête ASC doit valider HTTP=200 explicitement.
+- **(2026-05-02)** Le concurrency group `ios-signing` est validé : Pro et Client se sérialisent correctement. La race condition cert est définitivement éliminée.
+- **(2026-05-02)** `cert(force:true)` + `sigh(force:true)` accumule les vieux profils. Pro log du 30/04 a montré 6 profils orphelins (NX7Z78C58H, 8J3UYHLS99, C7FDL2XSL4, HNRHHV5597, UF84LT4677, GDAVVQ7Z4J). Si ça devient un problème de quota → ajouter un purge de profils.

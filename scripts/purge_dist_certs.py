@@ -27,9 +27,12 @@ HEADERS = ["-H", f"Authorization: Bearer {token}", "-H", "Content-Type: applicat
 
 
 def asc_get(path):
-    """GET ASC — returns (http_code, parsed_json_or_raw)."""
+    """GET ASC — returns (http_code, parsed_json_or_raw).
+
+    -g = --globoff : disables curl URL globbing so `filter[app]=...` works.
+    """
     r = subprocess.run(
-        ["curl", "-s", "--max-time", "30", "-w", "\n__HTTP_CODE__%{http_code}"]
+        ["curl", "-s", "-g", "--max-time", "30", "-w", "\n__HTTP_CODE__%{http_code}"]
         + HEADERS + [f"{BASE}{path}"],
         capture_output=True, text=True
     )
@@ -44,7 +47,7 @@ def asc_get(path):
 
 def asc_delete(cert_id):
     r = subprocess.run(
-        ["curl", "-s", "--max-time", "30", "-X", "DELETE",
+        ["curl", "-s", "-g", "--max-time", "30", "-X", "DELETE",
          "-o", "/dev/null", "-w", "%{http_code}"] + HEADERS + [f"{BASE}/v1/certificates/{cert_id}"],
         capture_output=True, text=True
     )

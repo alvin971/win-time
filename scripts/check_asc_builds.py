@@ -27,9 +27,14 @@ APPS = {
 
 
 def asc_get(path):
-    """Returns (http_code, parsed_json). Raises on transport failure."""
+    """Returns (http_code, parsed_json). Raises on transport failure.
+
+    -g = --globoff : disable URL globbing so `filter[app]=...` brackets
+    aren't interpreted as a glob pattern (otherwise curl returns HTTP 0
+    silently). ASC uses `filter[…]` and `fields[…]` syntax pervasively.
+    """
     r = subprocess.run(
-        ["curl", "-s", "--max-time", "30", "-w", "\n__HTTP_CODE__%{http_code}"]
+        ["curl", "-s", "-g", "--max-time", "30", "-w", "\n__HTTP_CODE__%{http_code}"]
         + HEADERS + [f"{BASE}{path}"],
         capture_output=True, text=True
     )
