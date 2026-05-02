@@ -1,0 +1,21 @@
+name: ASC Builds Check (thermometer only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check ASC build status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ASC API thermometer
+        env:
+          APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+          APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+          APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
+        run: |
+          pip3 install PyJWT cryptography --quiet
+          python3 scripts/check_asc_builds.py
