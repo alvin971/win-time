@@ -214,3 +214,28 @@ for app_name, app_id in APPS.items():
             print(f"    {a.get('version')} {fmt_date(a.get('uploadedDate'))} {a.get('processingState')} expired={a.get('expired')}")
     else:
         print(f"  {app_name}: HTTP {code} body={json.dumps(payload, indent=2)[:200]}")
+
+# --- Toutes les apps visibles par cette clé API ---
+print("\n--- Toutes les apps accessibles avec cette clé ASC ---")
+code, payload = asc_get("/v1/apps?limit=50&fields[apps]=name,bundleId,sku")
+if code == 200:
+    apps_all = payload.get("data", [])
+    print(f"  {len(apps_all)} app(s) visibles :")
+    for a in apps_all:
+        attr = a.get("attributes", {})
+        print(f"    {a.get('id'):<14} name={attr.get('name'):<25} bundleId={attr.get('bundleId')}")
+else:
+    print(f"  HTTP {code}")
+
+# --- Pre-release versions (sans sort qui faisait HTTP 400) ---
+print("\n--- Pre-release versions (sans sort) ---")
+for app_name, app_id in APPS.items():
+    code, payload = asc_get(f"/v1/apps/{app_id}/preReleaseVersions?limit=5&fields[preReleaseVersions]=version,platform")
+    if code != 200:
+        print(f"  {app_name}: ❌ HTTP {code} body={json.dumps(payload, indent=2)[:200]}")
+        continue
+    versions = payload.get("data", [])
+    if not versions:
+        print(f"  {app_name}: ⚠️  aucune preReleaseVersion")
+    else:
+        print(f"  {app_name}: {len(versions)} version(s) — {[v['attributes']['version'] for v in versions]}")
