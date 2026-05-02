@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,26 +10,46 @@ import 'core/di/injection_container.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  // Garde-fou anti-écran-blanc : tout crash async non capturé est loggé
+  // au lieu de produire un écran blanc silencieux indistingable d'un hang.
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  await ServiceLocator.init();
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      debugPrint(
+        'FlutterError: ${details.exception}\n${details.stack}',
+      );
+    };
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Init avec timeout ET try/catch : si un service natif (Firebase,
+    // secure_storage, etc.) hang ou throw, on continue malgré tout pour
+    // que runApp() soit appelé. Sans ça, écran blanc permanent en TestFlight.
+    try {
+      await ServiceLocator.init().timeout(const Duration(seconds: 15));
+    } catch (e, st) {
+      debugPrint('⚠️ ServiceLocator.init failed/timed-out: $e\n$st');
+    }
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  runApp(const WinTimeProApp());
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+    );
+
+    runApp(const WinTimeProApp());
+  }, (error, stack) {
+    debugPrint('Async error caught by runZonedGuarded: $error\n$stack');
+  });
 }
 
 class WinTimeProApp extends StatelessWidget {
@@ -66,4 +88,3 @@ class WinTimeProApp extends StatelessWidget {
     );
   }
 }
-

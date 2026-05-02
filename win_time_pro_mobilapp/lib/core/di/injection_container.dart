@@ -42,8 +42,13 @@ class ServiceLocator {
 
     _notificationService = NotificationService();
     try {
-      // Enregistre le token FCM au backend après login
-      final fcmToken = await FirebaseMessaging.instance.getToken();
+      // Enregistre le token FCM au backend après login.
+      // IMPORTANT : timeout obligatoire — sans GoogleService-Info.plist,
+      // FirebaseMessaging.getToken() HANG indéfiniment au lieu de throw,
+      // ce qui bloque main() avant runApp() → écran blanc permanent en TestFlight.
+      final fcmToken = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
       if (fcmToken != null) {
         _notificationService.onTokenRefreshed = (token) {
           // TODO: POST /notifications/fcm-token via _dioClient

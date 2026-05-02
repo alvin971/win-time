@@ -38,8 +38,11 @@ class NotificationService {
     // Demander la permission pour iOS
     await _requestPermission();
 
-    // Récupérer le token FCM
-    final token = await _firebaseMessaging.getToken();
+    // Récupérer le token FCM (timeout obligatoire — sans GoogleService-Info.plist
+    // ce call peut hanger indéfiniment au lieu de throw).
+    final token = await _firebaseMessaging
+        .getToken()
+        .timeout(const Duration(seconds: 5), onTimeout: () => null);
     print('FCM Token: $token');
 
     // Écouter les messages en foreground
@@ -162,8 +165,14 @@ class NotificationService {
     print('Unsubscribed from topic: $topic');
   }
 
-  /// Récupérer le token FCM
+  /// Récupérer le token FCM (avec timeout 5s pour éviter les hangs)
   Future<String?> getToken() async {
-    return await _firebaseMessaging.getToken();
+    try {
+      return await _firebaseMessaging
+          .getToken()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
+    } catch (_) {
+      return null;
+    }
   }
 }

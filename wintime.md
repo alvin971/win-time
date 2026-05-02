@@ -308,6 +308,57 @@ Implémenté dans `scripts/check_asc_builds.py` du repo win-time.
 
 Ajouter dans le pré-flight CI un step qui valide la présence des NSXxxUsageDescription dans Info.plist via `plutil` ou un script Python. Si une clé requise manque → fail early avec message clair.
 
+---
+
+## Itération 6 — Fix écran blanc post-publication TestFlight (2026-05-02)
+
+### Symptôme
+
+Les 2 builds VALID dans TestFlight installent OK sur iPhone, l'icône apparaît, mais au lancement : **écran blanc permanent**. Le LaunchScreen reste affiché, aucune UI Flutter ne se rend.
+
+### Cause racine
+
+Diagnostic confirmé par 2 agents Explore + lecture directe des fichiers.
+
+#### Pro (`win_time_pro_mobilapp`)
+`main.dart:14` → `await ServiceLocator.init()` → `injection_container.dart:46` → `await FirebaseMessaging.instance.getToken()` **sans timeout**.
+
+Sans `GoogleService-Info.plist`, sur iOS, FCM essaie de récupérer un APNs token via `UNUserNotificationCenter` qui ne répond jamais. Le call **hang indéfiniment** (ne throw pas, juste attend). Le `try/catch` capture les exceptions mais pas les hangs.
+
+→ `main()` reste bloqué à `await ServiceLocator.init()`, `runApp()` n'est jamais appelé, le LaunchScreen blanc reste affiché indéfiniment.
+
+#### Client (`win_time_mobilapp`)
+`main.dart:19` → `await configureDependencies()` → `getIt.init()` (généré par injectable).
+
+Le code généré (`injection.config.dart`) instancie `OrderRemoteDataSourceImpl(gh<Dio>())` mais **`Dio` n'est PAS enregistré** dans `injection.dart`. Au CI le `build_runner` régénère `injection.config.dart` selon les annotations du code source — il y aura toujours une dépendance `Dio` non résolue.
+
+→ `gh<Dio>()` throw `Object/factory of type Dio is not registered`. L'exception remonte jusqu'à `main()` qui n'a aucune protection → crash silencieux → écran blanc.
+
+(Secondairement : `NotificationService(gh<FirebaseMessaging>(), …)` échoue aussi si `FirebaseMessaging.instance` n'a pas pu être enregistré.)
+
+#### Les 2 apps
+Aucun `FlutterError.onError` ni `runZonedGuarded` → toute erreur runtime non capturée donne un écran blanc silencieux, sans stack trace visible. Sur TestFlight on n'a même pas accès à un debugger.
+
+### Fix appliqué
+
+| Fichier | Modification |
+|---------|--------------|
+| `win_time_mobilapp/lib/main.dart` | + `runZonedGuarded`, `FlutterError.onError`, try/catch + timeout sur Firebase / Hive / `configureDependencies` |
+| `win_time_mobilapp/lib/core/di/injection.dart` | Pré-enregistre `Dio` (nécessaire pour `OrderRemoteDataSourceImpl`) + try/catch autour de `getIt.init()` |
+| `win_time_mobilapp/lib/core/utils/notification_service.dart` | Ajoute `.timeout(5s)` sur `_firebaseMessaging.getToken()` |
+| `win_time_pro_mobilapp/lib/main.dart` | + `runZonedGuarded`, `FlutterError.onError`, try/catch + timeout 15s sur `ServiceLocator.init()` |
+| `win_time_pro_mobilapp/lib/core/di/injection_container.dart` | Ajoute `.timeout(5s)` sur `FirebaseMessaging.instance.getToken()` |
+
+### Leçons durables
+
+> **Toute app Flutter publiée doit avoir `runZonedGuarded` + `FlutterError.onError` à minima**. Sans ça, une erreur de plugin natif au démarrage = écran blanc indistingable d'un crash sans symptôme. Sur TestFlight, c'est le pire cas car on n'a pas de stack trace.
+
+> **Tout `await` sur un plugin natif** (Firebase, location, secure_storage, …) doit avoir un `.timeout(Duration(seconds: 5))`. Les méthodes natives peuvent **hanger** sans throw quand leur configuration est incomplète (ex. `GoogleService-Info.plist` absent).
+
+> **`build_runner` regénère `injection.config.dart` à chaque CI**. Toute dépendance attendue par le DI graph (Dio, baseUrl, etc.) DOIT être pré-enregistrée AVANT `getIt.init()`, sinon le call throw au runtime — invisible côté local (la version stale est lue) mais fatal au CI/TestFlight.
+
+> **Pattern Mentality** : init avec un `_configureApp()` qui wrap chaque async dans un try/catch + fallback (`_loadDefaults()`). Aucun `await` n'est laissé exposed. C'est ce qui fait que Mentality ne montre jamais d'écran blanc même quand un service est down.
+
 ## Leçons apprises (durable)
 
 À enrichir au fur et à mesure :
