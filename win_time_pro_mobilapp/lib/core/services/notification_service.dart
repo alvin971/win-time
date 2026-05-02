@@ -1,10 +1,30 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Service de gestion des notifications push (Firebase)
-/// Gère les notifications en foreground, background et terminated
+/// Service de gestion des notifications push (Firebase).
+///
+/// IMPORTANT : `FirebaseMessaging.instance` throw `[core/no-app]` quand
+/// `Firebase.initializeApp()` n'a pas été appelé (ou quand GoogleService-Info.plist
+/// est absent). On lazy-load + null-guard tous les usages pour que le
+/// constructeur n'explose pas — l'app démarre même sans Firebase, les
+/// notifications push sont juste désactivées.
 class NotificationService {
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _firebaseMessagingCache;
+  bool _firebaseAttempted = false;
+
+  FirebaseMessaging? get _fcm {
+    if (_firebaseAttempted) return _firebaseMessagingCache;
+    _firebaseAttempted = true;
+    try {
+      _firebaseMessagingCache = FirebaseMessaging.instance;
+    } catch (e) {
+      debugPrint('NotificationService: FirebaseMessaging unavailable: $e');
+      _firebaseMessagingCache = null;
+    }
+    return _firebaseMessagingCache;
+  }
+
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -20,38 +40,51 @@ class NotificationService {
 
   /// Initialisation du service
   Future<void> initialize() async {
-    // Demander les permissions
-    await _requestPermission();
+    final fcm = _fcm;
 
-    // Configuration des notifications locales
+    // Permissions push (FCM)
+    if (fcm != null) {
+      try {
+        await _requestPermission(fcm);
+      } catch (e) {
+        debugPrint('NotificationService: requestPermission failed: $e');
+      }
+    }
+
+    // Configuration des notifications locales (toujours OK même sans Firebase)
     await _configureLocalNotifications();
 
-    // Récupérer le token FCM
-    _fcmToken = await _firebaseMessaging.getToken();
-    print('📱 FCM Token: $_fcmToken');
+    if (fcm != null) {
+      try {
+        // Token FCM avec timeout obligatoire (sinon hang sans GoogleService-Info.plist)
+        _fcmToken = await fcm
+            .getToken()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
+        debugPrint('📱 FCM Token: $_fcmToken');
 
-    // Écouter les changements de token et notifier le backend
-    _firebaseMessaging.onTokenRefresh.listen((newToken) {
-      _fcmToken = newToken;
-      onTokenRefreshed?.call(newToken);
-    });
+        fcm.onTokenRefresh.listen((newToken) {
+          _fcmToken = newToken;
+          onTokenRefreshed?.call(newToken);
+        });
 
-    // Gérer les messages en foreground
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
-    // Gérer les messages qui ouvrent l'app (background/terminated)
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-    // Vérifier si l'app a été ouverte via une notification
-    final initialMessage = await _firebaseMessaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleMessageOpenedApp(initialMessage);
+        final initialMessage = await fcm
+            .getInitialMessage()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
+        if (initialMessage != null) {
+          _handleMessageOpenedApp(initialMessage);
+        }
+      } catch (e) {
+        debugPrint('NotificationService: Firebase setup failed: $e');
+      }
     }
   }
 
   /// Demander les permissions de notifications
-  Future<void> _requestPermission() async {
-    final settings = await _firebaseMessaging.requestPermission(
+  Future<void> _requestPermission(FirebaseMessaging fcm) async {
+    final settings = await fcm.requestPermission(
       alert: true,
       announcement: false,
       badge: true,
@@ -61,7 +94,7 @@ class NotificationService {
       sound: true,
     );
 
-    print('📬 Notification permission: ${settings.authorizationStatus}');
+    debugPrint('📬 Notification permission: ${settings.authorizationStatus}');
   }
 
   /// Configuration des notifications locales (affichage personnalisé)
@@ -110,7 +143,7 @@ class NotificationService {
 
   /// Gérer les messages reçus en foreground
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('🔔 Foreground message: ${message.messageId}');
+    debugPrint('🔔 Foreground message: ${message.messageId}');
 
     final notification = message.notification;
     final data = message.data;
@@ -128,7 +161,7 @@ class NotificationService {
 
   /// Gérer les messages qui ouvrent l'app
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('🚀 App opened from notification: ${message.messageId}');
+    debugPrint('🚀 App opened from notification: ${message.messageId}');
 
     final data = message.data;
     onNotificationTap?.call(data);
@@ -179,14 +212,26 @@ class NotificationService {
 
   /// S'abonner à un topic (ex: restaurant spécifique)
   Future<void> subscribeToTopic(String topic) async {
-    await _firebaseMessaging.subscribeToTopic(topic);
-    print('✅ Subscribed to topic: $topic');
+    final fcm = _fcm;
+    if (fcm == null) return;
+    try {
+      await fcm.subscribeToTopic(topic);
+      debugPrint('✅ Subscribed to topic: $topic');
+    } catch (e) {
+      debugPrint('NotificationService: subscribeToTopic failed: $e');
+    }
   }
 
   /// Se désabonner d'un topic
   Future<void> unsubscribeFromTopic(String topic) async {
-    await _firebaseMessaging.unsubscribeFromTopic(topic);
-    print('❌ Unsubscribed from topic: $topic');
+    final fcm = _fcm;
+    if (fcm == null) return;
+    try {
+      await fcm.unsubscribeFromTopic(topic);
+      debugPrint('❌ Unsubscribed from topic: $topic');
+    } catch (e) {
+      debugPrint('NotificationService: unsubscribeFromTopic failed: $e');
+    }
   }
 
   /// Helpers pour payload

@@ -359,6 +359,58 @@ Aucun `FlutterError.onError` ni `runZonedGuarded` → toute erreur runtime non c
 
 > **Pattern Mentality** : init avec un `_configureApp()` qui wrap chaque async dans un try/catch + fallback (`_loadDefaults()`). Aucun `await` n'est laissé exposed. C'est ce qui fait que Mentality ne montre jamais d'écran blanc même quand un service est down.
 
+---
+
+## Itération 7 — Pro toujours blanc (Client OK) — root cause Firebase
+
+**Date** : 2026-05-02 ~20:00 UTC
+
+**Symptôme post-iter6** :
+- ✅ **Client** : SplashScreen + login s'affichent. Le fix Dio + try/catch a marché.
+- ❌ **Pro** : encore écran blanc malgré runZonedGuarded + timeout FCM.
+
+### Diagnostic
+
+Lecture précise de `notification_service.dart` ligne 7 :
+```dart
+class NotificationService {
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;  // ← FIELD INITIALIZER
+  ...
+}
+```
+
+Et de `main.dart` Pro avant ce fix : **AUCUN `await Firebase.initializeApp()`**, contrairement à Client qui en faisait un (ligne 13).
+
+Conséquence :
+1. `ServiceLocator.init()` ligne 43 fait `_notificationService = NotificationService();`
+2. Le constructeur évalue le field initializer `FirebaseMessaging.instance`
+3. Comme `Firebase.initializeApp()` n'a JAMAIS été appelé → throw `[core/no-app] No Firebase App '[DEFAULT]' has been created`
+4. `ServiceLocator.init()` crash AVANT d'initialiser `authRepository` (lignes 56+)
+5. `runApp(WinTimeProApp())` est appelé
+6. `MultiBlocProvider(providers: [BlocProvider(create: (_) => AuthBloc(authRepository: ServiceLocator.authRepository))])` accède à `ServiceLocator.authRepository` qui est `late uninitialized`
+7. **`LateInitializationError`** dans `BlocProvider.create` → caught par `FlutterError.onError` → en release mode, `ErrorWidget` par défaut = widget gris/blanc invisible
+8. → écran blanc
+
+### Fix iter7 (commit à venir)
+
+Trois modifications combinées pour éliminer la classe entière de bugs "Firebase manquant = blank screen" :
+
+| Fichier | Modification |
+|---------|--------------|
+| `win_time_pro_mobilapp/lib/main.dart` | + `await Firebase.initializeApp()` (avec timeout 5s + try/catch). + `ErrorWidget.builder` qui affiche un message visible au lieu d'un widget gris invisible |
+| `win_time_pro_mobilapp/lib/core/services/notification_service.dart` | `_firebaseMessaging` devient lazy + nullable (try/catch sur `.instance`). Tous les usages internes guardés avec `if (fcm == null) return`. Plus de field initializer crashable. |
+| `win_time_pro_mobilapp/lib/core/di/injection_container.dart` | `ServiceLocator.init()` réordonné : Auth + Orders init AVANT tout call Firebase. Comme ça, même si Firebase crash, `authRepository` est déjà set → BlocProvider build sans erreur. |
+| `win_time_mobilapp/lib/main.dart` | + `ErrorWidget.builder` aussi (pour parité + sécurité future) |
+
+### Leçon durable
+
+> **Trois règles d'or pour Firebase + Flutter** :
+> 1. Toujours appeler `await Firebase.initializeApp()` AVANT tout usage de `FirebaseMessaging.instance` (ou autre `XxxxFirebase.instance`). Sans ça → throw `[core/no-app]`.
+> 2. Ne JAMAIS utiliser `final FirebaseXxx field = FirebaseXxx.instance;` comme **field initializer** : si Firebase n'est pas init, le constructeur entier de la classe throw — invisible dans les logs, propagé à toute instanciation. Toujours lazy + try/catch.
+> 3. Dans tout DI manuel (`ServiceLocator`-style), **initialiser les fields critiques EN PREMIER** (auth, repositories) puis les services tiers (Firebase) à la fin. Comme ça, un crash Firebase ne casse pas le reste du graph.
+
+> **ErrorWidget.builder** : par défaut en release mode, Flutter affiche un widget gris quand le widget tree throw. Sur TestFlight ça ressemble à un blank screen. Toujours définir un `ErrorWidget.builder` qui affiche le message d'erreur visiblement.
+
 ## Leçons apprises (durable)
 
 À enrichir au fur et à mesure :

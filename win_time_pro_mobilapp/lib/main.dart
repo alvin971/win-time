@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +23,34 @@ void main() {
         'FlutterError: ${details.exception}\n${details.stack}',
       );
     };
+
+    // ErrorWidget : si une exception se produit pendant un build de widget,
+    // on affiche un message visible (au lieu du gris/blanc par défaut en
+    // release mode).
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Material(
+        color: Colors.white,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Erreur de démarrage :\n\n${details.exception}',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    };
+
+    // Firebase : initialisation requise AVANT tout usage de FirebaseMessaging.
+    // Sans `initializeApp()`, `FirebaseMessaging.instance` throw "[core/no-app]".
+    // Avec timeout pour éviter de bloquer si la config est cassée.
+    try {
+      await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('⚠️ Firebase.initializeApp failed/timed-out: $e');
+    }
 
     // Init avec timeout ET try/catch : si un service natif (Firebase,
     // secure_storage, etc.) hang ou throw, on continue malgré tout pour

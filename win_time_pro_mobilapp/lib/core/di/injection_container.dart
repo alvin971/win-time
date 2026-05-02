@@ -1,5 +1,6 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/dio_client.dart';
 import '../services/notification_service.dart';
 import '../services/websocket_service.dart';
@@ -31,8 +32,14 @@ class ServiceLocator {
   static late OrderRepository orderRepository;
 
   /// À appeler une seule fois dans main() avant runApp()
+  ///
+  /// IMPORTANT : on initialise les fields CRITIQUES (authRepository,
+  /// orderRepository) AVANT tout call Firebase. Comme ça, même si Firebase
+  /// throw (parce que GoogleService-Info.plist est absent), les BlocProvider
+  /// qui dépendent de ServiceLocator.authRepository peuvent toujours se
+  /// construire et l'app affiche au moins la SplashScreen au lieu d'écran blanc.
   static Future<void> init() async {
-    // --- Infrastructure ---
+    // ─── 1. Infrastructure (toujours OK, pas d'I/O réseau) ────────────────
     _secureStorage = const FlutterSecureStorage(
       aOptions: AndroidOptions(encryptedSharedPreferences: true),
     );
@@ -40,25 +47,7 @@ class ServiceLocator {
     _dioClient = DioClient(secureStorage: _secureStorage);
     _wsService = WebSocketService();
 
-    _notificationService = NotificationService();
-    try {
-      // Enregistre le token FCM au backend après login.
-      // IMPORTANT : timeout obligatoire — sans GoogleService-Info.plist,
-      // FirebaseMessaging.getToken() HANG indéfiniment au lieu de throw,
-      // ce qui bloque main() avant runApp() → écran blanc permanent en TestFlight.
-      final fcmToken = await FirebaseMessaging.instance
-          .getToken()
-          .timeout(const Duration(seconds: 5), onTimeout: () => null);
-      if (fcmToken != null) {
-        _notificationService.onTokenRefreshed = (token) {
-          // TODO: POST /notifications/fcm-token via _dioClient
-        };
-      }
-    } catch (_) {
-      // Firebase non configuré — notifications push désactivées
-    }
-
-    // --- Auth ---
+    // ─── 2. Auth (DOIT être set avant runApp pour que BlocProvider build) ─
     _authLocal = AuthLocalDataSourceImpl(_secureStorage);
     _authRemote = AuthRemoteDataSourceImpl(_dioClient);
     authRepository = AuthRepositoryImpl(
@@ -67,12 +56,31 @@ class ServiceLocator {
       dioClient: _dioClient,
     );
 
-    // --- Orders ---
+    // ─── 3. Orders ────────────────────────────────────────────────────────
     _ordersRemote = OrdersRemoteDataSourceImpl(_dioClient);
     orderRepository = OrderRepositoryImpl(
       remote: _ordersRemote,
       wsService: _wsService,
     );
+
+    // ─── 4. NotificationService (lazy Firebase, ne throw plus) ────────────
+    _notificationService = NotificationService();
+
+    // ─── 5. Firebase optionnel (peut hang/throw, mais tout est déjà set) ──
+    try {
+      // Le constructeur NotificationService est désormais safe (lazy + try/catch).
+      // Ici on tente juste de récupérer le token initial pour le backend.
+      final fcmToken = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
+      if (fcmToken != null) {
+        _notificationService.onTokenRefreshed = (token) {
+          // TODO: POST /notifications/fcm-token via _dioClient
+        };
+      }
+    } catch (e) {
+      debugPrint('ServiceLocator: Firebase token unavailable: $e');
+    }
   }
 
   // Accès aux singletons partagés

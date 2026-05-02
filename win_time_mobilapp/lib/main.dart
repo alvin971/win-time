@@ -21,6 +21,24 @@ void main() {
       );
     };
 
+    // Si un build de widget throw, on l'affiche visiblement (au lieu du
+    // widget gris par défaut en release mode → indistinguable d'un blanc).
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Material(
+        color: Colors.white,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Erreur de démarrage :\n\n${details.exception}',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    };
+
     // Firebase : optionnel (GoogleService-Info.plist absent en TestFlight pour le moment)
     try {
       await Firebase.initializeApp().timeout(const Duration(seconds: 5));
