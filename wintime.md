@@ -219,11 +219,94 @@ Les **12 buildUploads** (6 Client + 6 Pro, sur les 5 derniers jours) sont tous e
 - Sans la string, Apple rejette le binaire sans le notifier comme un build dans `/v1/builds`
 - L'upload existait dans `/v1/apps/{id}/buildUploads` mais en état `FAILED` (non visible via les endpoints standards utilisés par fastlane)
 
-### Itération 5 — Fix Info.plist
+### Itération 5 — Fix Info.plist (RÉUSSITE 🎉)
 
-Ajout dans les deux Info.plist (Client et Pro) de tous les NSXxxUsageDescription nécessaires : `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSPhotoLibraryAddUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `NSMicrophoneUsageDescription`, `NSContactsUsageDescription`, `NSFaceIDUsageDescription`.
+- **Commit** : `686b1e4` — `fix: NSXxxUsageDescription dans Info.plist (cause racine 90683)`
+- **Runs** :
+  - Client `25255692051` : success en 32m45s (start 15:49:18, end 16:22:24, upload 16:22:15)
+  - Pro `25255692058` : success en ~9m (start 16:22:31 après concurrency lock, upload 16:30:46)
 
-Aussi : retour à `skip_waiting_for_build_processing: true` dans les Fastfiles (l'attente n'était PAS la cause — le wait infini venait juste du fait qu'Apple ne registrait jamais le build à cause du 90683).
+**Ajout dans les deux Info.plist (Client et Pro)** :
+- `NSCameraUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+- `NSPhotoLibraryAddUsageDescription`
+- `NSLocationWhenInUseUsageDescription`
+- `NSLocationAlwaysAndWhenInUseUsageDescription`
+- `NSMicrophoneUsageDescription`
+- `NSContactsUsageDescription`
+- `NSFaceIDUsageDescription`
+
+Retour de `skip_waiting_for_build_processing: true` dans les Fastfiles (le wait n'était pas la cause).
+
+### ✅ Confirmation finale (16:32 UTC)
+
+Thermomètre asc_check à 16:32:15 UTC :
+```
+--- win-time (Client) (App ID 6764433401) ---
+  1 build(s) trouvé(s)
+  Version        Uploaded               State          Expired  Audience
+  202605021605   2026-05-02 09:23 UTC   VALID          False    APP_STORE_ELIGIBLE
+```
+
+```
+buildUploads :
+  Client v202605021605 → state=COMPLETE (errors:[], warnings:[]) ✅
+  Pro    v202605021627 → state=PROCESSING (errors:[], warnings:[]) ⏳
+```
+
+Le build Client est officiellement **VALID** dans TestFlight, **APP_STORE_ELIGIBLE**.
+Pro est encore en processing (uploadé 1m20 avant le check), deviendra VALID dans 5-15 min.
+
+## ✅ Definition of Done — VALIDÉE 🎉
+
+- [x] Concurrency group `ios-signing` (commit 716b340)
+- [x] Bundle IDs alignés avec les apps ASC existantes
+- [x] Deployment targets pbxproj == Podfile (Client 15.0, Pro 13.0)
+- [x] `DEVELOPMENT_TEAM = J7K94W4PUN` dans les deux pbxproj
+- [x] Fastfile aligné sur la référence Mentality
+- [x] `scripts/purge_dist_certs.py` purge les certs DISTRIBUTION
+- [x] Workflows iOS Client et Pro identiques structurellement
+- [x] **Info.plist : NSCameraUsageDescription, NSPhotoLibraryUsageDescription, NSLocation*, NSMicrophoneUsageDescription, NSContactsUsageDescription, NSFaceIDUsageDescription** (commit 686b1e4)
+- [x] **Client `win-time` : VALID + APP_STORE_ELIGIBLE** (v202605021605 uploaded 16:23 UTC) ✅
+- [x] **Pro `win-time-pro` : VALID + APP_STORE_ELIGIBLE** (v202605021627 uploaded 16:31 UTC) ✅
+- [ ] Action utilisateur restante : envoyer/relancer l'invitation TestFlight à `monopoly97160@gmail.com` depuis App Store Connect (les builds sont prêts, le tester peut maintenant être ajouté au groupe TestFlight)
+
+## Leçons apprises (durable, FINAL)
+
+### 🎯 La cause racine était un classique iOS, mais cachée
+
+**Apple Error Code `90683` — Missing purpose string in Info.plist** se manifeste **silencieusement** :
+- Apple accepte l'upload (iTMSTransporter dit "Successfully uploaded")
+- Apple traite ensuite le binaire
+- Si l'IPA contient des références (via plugins Flutter) à des APIs sensibles (Camera, Photos, Location, Microphone, Face ID...) **sans** la `NSXxxUsageDescription` correspondante dans Info.plist, Apple **rejette le binaire**
+- L'erreur **n'apparaît PAS dans `/v1/builds`** (qui ne liste que les builds "promus" en post-processing)
+- L'erreur **n'apparaît PAS dans les emails** (Apple les envoie pour rejets explicites mais pas toujours pour rejets de processing)
+- L'erreur **n'apparaît PAS dans la sortie de fastlane** (qui se termine sur "Successfully uploaded")
+- Elle n'apparaît **QUE** dans `/v1/apps/{id}/buildUploads` avec `state.errors[]` détaillé
+- Les plugins Flutter qui DÉCLENCHENT cette exigence : `image_picker`, `permission_handler`, `location`, `flutter_stripe`, `firebase_*`, `google_maps_flutter`, `flutter_secure_storage` (Face ID), etc.
+
+### Outil de diagnostic critique : query `/v1/apps/{id}/buildUploads`
+
+Ce endpoint expose les uploads **rejetés** avec leurs erreurs Apple détaillées. À utiliser **systématiquement** quand un build n'apparaît pas dans TestFlight malgré un upload "réussi".
+
+Implémenté dans `scripts/check_asc_builds.py` du repo win-time.
+
+### Hypothèses précédemment testées et écartées
+
+| Hypothèse | Résultat |
+|-----------|----------|
+| Race condition cert (parallel runs) | Réelle, fixée par concurrency group `ios-signing` (716b340), mais pas la cause finale |
+| `purge_dist_certs.py` masque les erreurs auth | Fixé (strict mode), mais pas la cause finale |
+| `curl` glob brackets dans ASC URLs | Réel, fixé avec `-g`, mais pas la cause finale |
+| Cert revoked DURING Apple processing | Plausible mais non vérifiable, le vrai problème était amont |
+| `ITSAppUsesNonExemptEncryption` manquant | Fixé proactivement (mentality l'a), pas la cause finale |
+| `skip_waiting_for_build_processing: false` | Tenté mais hung 60+ min car Apple ne progressait jamais à cause du 90683 |
+| App Store Connect setup (privacy, beta review) | Identique à Mentality, pas la cause |
+| Bundle ID `0for0.com` non standard | Pro utilise un format standard et échouait aussi → pas la cause |
+
+### Prochaine action de prévention
+
+Ajouter dans le pré-flight CI un step qui valide la présence des NSXxxUsageDescription dans Info.plist via `plutil` ou un script Python. Si une clé requise manque → fail early avec message clair.
 
 ## Leçons apprises (durable)
 
