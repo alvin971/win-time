@@ -102,10 +102,47 @@ L'hypothèse **C** est très probable car `purge_dist_certs.py` ne vérifie PAS 
 - **Hypothèse partiellement réfutée** : ❌ **A** (rate-limit Apple) — l'auth marche maintenant avec la même clé, donc pas un blocage durable.
 - **Action** : ajouter `-g`/`--globoff` aux 3 appels curl dans `check_asc_builds.py` et `purge_dist_certs.py` (asc_get, asc_delete). Re-trigger.
 
-## Itération 2 — En cours
+## Itération 2 — 2026-05-02 12:35 → 13:13 UTC (Client)
 
-- **Commit attendu** : (à venir, après le fix du curl globbing)
-- **Objectif** : voir l'état réel des builds Pro (a-t-il été VALID ou rejeté ?) + faire passer Client jusqu'à `cert` pour reproduire/écarter l'erreur d'auth originelle.
+- **Commit** : `39d0f57` — fix: curl --globoff sur ASC API
+- **Runs** : Client `25252030466` (success en 38m33s, upload OK 13:13:56), Pro `25252030787` (in_progress après Client)
+- **Sortie thermomètre Client** :
+  ```
+  ✅ ASC API auth OK (HTTP 200)
+  --- win-time (Client) (App ID 6764433401) ---
+    ⚠️  Aucun build présent dans ASC pour cette app.
+    Beta groups : wintime(int), External Testers(ext)
+  --- win-time-pro (App ID 6764434885) ---
+    ⚠️  Aucun build présent dans ASC pour cette app.
+    Beta groups : wintimepro(int), External Testers(ext)
+  ```
+- **Conséquence** : **Apple a silencieusement rejeté tous les uploads précédents** (notamment celui de Pro 30/04 qui avait affiché "Successfully uploaded"). Aucun build n'est présent dans ASC pour aucune des deux apps malgré 60+ heures écoulées. Les beta groups eux sont OK.
+- **Hypothèse confirmée** : ❌ A et C écartées définitivement (auth ASC marche). Le vrai problème n'est PAS un cert/auth — c'est qu'**Apple rejette les binaires pendant le post-processing sans erreur visible**.
+- **Run Client d'aujourd'hui** : a uploadé à 13:13:56 UTC. État ASC à vérifier après ~10-30 min de processing Apple.
+- **Run Pro d'aujourd'hui** : en cours.
+
+### Investigation cause racine du rejet silencieux
+
+Diff Info.plist mentality (qui marche) vs win-time :
+```diff
+< <key>ITSAppUsesNonExemptEncryption</key>
+< <false/>
+```
+
+**`ITSAppUsesNonExemptEncryption` est ABSENT des deux Info.plist win-time** (Client et Pro). Sans cette clé, Apple :
+- met le build en attente d'une déclaration manuelle dans ASC ("Manage Encryption Compliance")
+- **bloque la distribution aux external testers** jusqu'à ce qu'on coche manuellement la case dans ASC web
+- ne le rejette pas systématiquement, mais combiné à d'autres facteurs (ex : iOS 17+ privacy manifest), peut le bloquer en processing
+
+**Action décidée pour itération 3** : ajouter `<key>ITSAppUsesNonExemptEncryption</key><false/>` aux deux Info.plist. Patch déjà appliqué localement, **commit en attente** (on ne pousse PAS pendant que le run Pro est en cours pour ne pas relancer un build sur du code mi-modifié).
+
+## Itération 3 — En cours (déclenchée après Pro de l'itération 2)
+
+- **Plan** :
+  1. Attendre fin de Pro `25252030787`
+  2. Si Pro upload OK : attendre 5-10 min de processing Apple, run thermometer local (via workflow_dispatch d'un workflow rapide ou via la prochaine étape)
+  3. Si builds toujours absents → commit Info.plist + push + retrigger les deux workflows
+  4. Si builds VALID apparaissent → c'était juste qu'Apple n'avait pas eu le temps. Ajouter quand même `ITSAppUsesNonExemptEncryption` pour pérenniser.
 
 ## Leçons apprises (durable)
 
