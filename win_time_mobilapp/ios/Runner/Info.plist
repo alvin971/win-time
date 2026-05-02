@@ -47,5 +47,21 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Win Time utilise l'appareil photo pour scanner les QR codes et prendre des photos liées à votre commande.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Win Time accède à vos photos pour vous permettre de partager des images dans l'application.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Win Time enregistre des images dans votre photothèque (par exemple les reçus).</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Win Time utilise votre position pour trouver les restaurants à proximité.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Win Time utilise votre position pour trouver les restaurants à proximité et vous notifier quand vous approchez d'une commande prête.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Win Time peut utiliser le microphone pour les fonctionnalités vocales optionnelles.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Win Time peut accéder à vos contacts pour partager facilement avec vos amis.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Win Time utilise Face ID pour sécuriser l'accès à votre compte et à vos paiements.</string>
 </dict>
 </plist>

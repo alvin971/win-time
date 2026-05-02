@@ -202,6 +202,29 @@ Note : `0for0.com` n'est pas un bundle ID au format reverse-DNS standard (devrai
 
 Attendre que Client iter4 finisse complètement (avec l'attente Apple inside fastlane). Si l'upload réussit ET le wait Apple passe → Apple dira pourquoi il rejetait (ou tout passera enfin). Si l'upload réussit mais Apple timeout/rejette → fastlane imprimera la vraie erreur Apple, qu'on n'a jamais eue jusqu'ici.
 
+### 🎯 CAUSE RACINE TROUVÉE — 2026-05-02 15:47 UTC
+
+L'endpoint ASC `/v1/apps/{id}/buildUploads` (au lieu de `/v1/apps/{id}/builds`) **expose les uploads en état FAILED** ! On voit alors les vraies erreurs Apple par upload :
+
+**Apple error code 90683 — Missing purpose string in Info.plist** :
+
+| App | Clé manquante (ERREUR fatale) | Clés en warning |
+|-----|-------------------------------|-----------------|
+| **win-time** (Client) | `NSCameraUsageDescription` | `NSLocationAlwaysAndWhenInUseUsageDescription`, `NSLocationWhenInUseUsageDescription` |
+| **win-time-pro** (Pro) | `NSPhotoLibraryUsageDescription` | (pas d'autres remontés) |
+
+Les **12 buildUploads** (6 Client + 6 Pro, sur les 5 derniers jours) sont tous en état `FAILED` avec ces erreurs précises. Apple les a tous rejetés silencieusement parce que :
+- Les plugins Flutter (`image_picker`, `flutter_stripe`, `permission_handler`, Firebase, Maps) référencent ces APIs natives iOS
+- Apple **exige** une `purpose string` même si l'app ne les utilise pas réellement
+- Sans la string, Apple rejette le binaire sans le notifier comme un build dans `/v1/builds`
+- L'upload existait dans `/v1/apps/{id}/buildUploads` mais en état `FAILED` (non visible via les endpoints standards utilisés par fastlane)
+
+### Itération 5 — Fix Info.plist
+
+Ajout dans les deux Info.plist (Client et Pro) de tous les NSXxxUsageDescription nécessaires : `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSPhotoLibraryAddUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `NSMicrophoneUsageDescription`, `NSContactsUsageDescription`, `NSFaceIDUsageDescription`.
+
+Aussi : retour à `skip_waiting_for_build_processing: true` dans les Fastfiles (l'attente n'était PAS la cause — le wait infini venait juste du fait qu'Apple ne registrait jamais le build à cause du 90683).
+
 ## Leçons apprises (durable)
 
 À enrichir au fur et à mesure :

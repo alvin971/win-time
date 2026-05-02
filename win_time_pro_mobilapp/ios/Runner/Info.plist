@@ -47,5 +47,21 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Win Time Pro utilise l'appareil photo pour photographier les plats et scanner les codes de commande.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Win Time Pro accède à vos photos pour vous permettre d'ajouter des images aux produits du menu.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Win Time Pro enregistre des images dans votre photothèque (par exemple les rapports).</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Win Time Pro utilise la position de votre établissement pour la géolocalisation des commandes.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Win Time Pro utilise la position de votre établissement pour la géolocalisation et la livraison.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Win Time Pro peut utiliser le microphone pour des fonctionnalités vocales optionnelles.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Win Time Pro peut accéder à vos contacts pour gérer votre carnet d'adresses professionnel.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Win Time Pro utilise Face ID pour sécuriser l'accès à votre compte professionnel.</string>
 </dict>
 </plist>
