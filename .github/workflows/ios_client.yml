@@ -63,14 +63,21 @@ jobs:
         run: pod install --repo-update
         working-directory: win_time_mobilapp/ios
 
-      - name: Purge orphan Distribution certificates
+      - name: ASC API thermometer (pre-flight auth check)
         env:
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
         run: |
           pip3 install PyJWT cryptography --quiet --break-system-packages
-          python3 scripts/purge_dist_certs.py
+          python3 scripts/check_asc_builds.py
+
+      - name: Purge orphan Distribution certificates
+        env:
+          APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
+          APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
+          APP_STORE_API_KEY_CONTENT: ${{ secrets.APP_STORE_API_KEY_CONTENT }}
+        run: python3 scripts/purge_dist_certs.py
 
 
       - name: Select Xcode 26
