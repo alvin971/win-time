@@ -7,6 +7,7 @@ import '../services/websocket_service.dart';
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/data/repositories/demo_auth_repository.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/orders/data/datasources/orders_remote_datasource.dart';
 import '../../features/orders/data/repositories/order_repository_impl.dart';
@@ -50,8 +51,14 @@ class ServiceLocator {
     // ─── 2. Auth (DOIT être set avant runApp pour que BlocProvider build) ─
     _authLocal = AuthLocalDataSourceImpl(_secureStorage);
     _authRemote = AuthRemoteDataSourceImpl(_dioClient);
-    authRepository = AuthRepositoryImpl(
+    final realAuthRepository = AuthRepositoryImpl(
       remote: _authRemote,
+      local: _authLocal,
+      dioClient: _dioClient,
+    );
+    // TODO(release): unwrap DemoAuthRepository before public App Store launch.
+    authRepository = DemoAuthRepository(
+      real: realAuthRepository,
       local: _authLocal,
       dioClient: _dioClient,
     );

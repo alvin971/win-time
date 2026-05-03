@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/custom_text_field.dart';
+import '../../../orders/presentation/pages/dashboard_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import 'widgets/demo_login_panel.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -52,6 +54,9 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               );
             } else if (state is AuthAuthenticated) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const DashboardPage()),
+              );
             }
           },
           builder: (context, state) {
@@ -165,6 +170,9 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: isLoading ? null : _handleLogin,
                       isLoading: isLoading,
                     ),
+                    const SizedBox(height: 20),
+                    // 🧪 TEST — comptes de démo (à retirer avant release)
+                    const DemoLoginPanel(),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
