@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/demo/demo_accounts.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -38,6 +39,10 @@ class _LoginPageState extends State<LoginPage> {
       // Navigation vers HomePage
       context.go(AppRoutes.home);
     }
+  }
+
+  void _setBusy(bool busy) {
+    if (mounted) setState(() => _isLoading = busy);
   }
 
   @override
@@ -231,7 +236,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                // 🧪 TEST — comptes de démo (à retirer avant release App Store)
+                _DemoLoginPanel(busy: _isLoading, onPickedDemo: _setBusy),
+
+                const SizedBox(height: 24),
 
                 // Inscription
                 Row(
@@ -251,6 +261,89 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// 🧪 TEST — comptes de démo, à retirer avant release App Store publique.
+class _DemoLoginPanel extends StatelessWidget {
+  final bool busy;
+  final ValueChanged<bool> onPickedDemo;
+
+  const _DemoLoginPanel({required this.busy, required this.onPickedDemo});
+
+  Future<void> _pick(BuildContext context, DemoAccount account) async {
+    onPickedDemo(true);
+    try {
+      await loginAsDemo(account);
+      if (context.mounted) context.go(AppRoutes.home);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur démo: $e')),
+        );
+      }
+    } finally {
+      onPickedDemo(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.08),
+        border: Border.all(color: Colors.amber, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.science_outlined, size: 18, color: Colors.brown),
+              SizedBox(width: 6),
+              Text(
+                'TEST — Connexion rapide par rôle',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.brown,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choisis un rôle pour entrer dans l\'app sans mot de passe',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final account in kDemoAccounts)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => _pick(context, account),
+                  icon: Icon(account.icon, color: account.color),
+                  label: Text(account.label),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: account.color,
+                    side: BorderSide(color: account.color),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
