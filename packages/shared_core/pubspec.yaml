@@ -12,10 +12,10 @@ dependencies:
     sdk: flutter
   equatable: ^2.0.5
   intl: '>=0.19.0 <1.0.0'
-  # Firebase — versions centralisées ici pour éviter les divergences entre les 2 apps.
-  cloud_firestore: ^5.5.2
-  firebase_auth: ^5.3.3
-  firebase_storage: ^12.3.0
+  # NOTE: shared_core est volontairement libre de toute dépendance backend
+  # (Firebase, Supabase, etc.). Les models exposent fromRow/toRow qui prennent
+  # un Map<String, dynamic> — chaque app branche son SDK (supabase_flutter, etc.)
+  # dans sa propre couche data.
 
 dev_dependencies:
   flutter_test:

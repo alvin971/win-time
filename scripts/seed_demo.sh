@@ -1,48 +1,41 @@
 #!/usr/bin/env bash
-# Win Time — Wrapper de seed pour la démo end-to-end.
+# Win Time — Wrapper de seed Supabase pour la démo end-to-end.
 #
-# Usage:
-#   1. Télécharger un service account depuis :
-#      Firebase Console → Project Settings → Service Accounts → Generate new private key
-#      Le sauvegarder dans scripts/service-account.json (gitignored).
-#
-#   2. Depuis la racine du monorepo :
-#      ./scripts/seed_demo.sh
+# Usage : ./scripts/seed_demo.sh
 #
 # Prérequis :
 #   - Node ≥ 18
-#   - firebase-admin installé : `cd scripts && npm install`
-#   - .firebaserc pointant sur le bon projet (wintime-demo)
+#   - Fichier scripts/.env (cf. .env.example) avec SUPABASE_URL et SUPABASE_SERVICE_ROLE
+#   - Migrations SQL appliquées sur le Postgres (voir SETUP_SUPABASE.md)
+#
+# Idempotent — peut être relancé sans dupliquer les données.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SA_PATH="${SCRIPT_DIR}/service-account.json"
 
-if [[ ! -f "$SA_PATH" ]]; then
-  echo "❌ Service account introuvable : $SA_PATH"
-  echo "   Télécharger depuis : Firebase Console → Project Settings → Service Accounts"
+if [[ ! -f "${SCRIPT_DIR}/.env" ]]; then
+  echo "❌ ${SCRIPT_DIR}/.env introuvable."
+  echo "   Copie : cp ${SCRIPT_DIR}/.env.example ${SCRIPT_DIR}/.env"
+  echo "   Puis remplis SUPABASE_URL et SUPABASE_SERVICE_ROLE."
   exit 1
 fi
 
 if [[ ! -d "${SCRIPT_DIR}/node_modules" ]]; then
-  echo "▶ Installation firebase-admin (première fois)..."
+  echo "▶ Installation des dépendances Node (première fois)..."
   (cd "$SCRIPT_DIR" && npm install --silent)
 fi
 
-echo "▶ Seed Win Time → projet par défaut"
-GOOGLE_APPLICATION_CREDENTIALS="$SA_PATH" node "${SCRIPT_DIR}/seed_firestore.js"
+echo "▶ Seed Win Time → schéma wintime"
+node "${SCRIPT_DIR}/seed_supabase.js"
 
 echo ""
-echo "✅ Seed OK. Comptes de démo (password = demo-pass-1234) :"
-echo "   • owner.demo@wintime.test     → Pro (restaurantOwner, owns La Trattoria)"
+echo "✅ Seed OK. Comptes (password = demo-pass-1234) :"
+echo "   • owner.demo@wintime.test     → Pro (restaurantOwner, La Trattoria)"
 echo "   • manager.demo@wintime.test   → Pro (restaurantManager)"
 echo "   • staff.demo@wintime.test     → Pro (restaurantStaff)"
 echo "   • admin.demo@wintime.test     → Pro (admin)"
 echo "   • demo.customer@wintime.test  → Client (peut commander)"
-echo ""
-echo "Restaurants créés :"
-echo "   • La Trattoria du Châtelet (italien, 75004)"
-echo "   • Le Bistrot du Louvre (français, 75001)"
-echo "   • Sakura Sushi (japonais, 75004)"
-echo "   • Beirut Étoile (libanais, 75017)"
+echo "   • louvre@wintime.test         → owner Bistrot du Louvre"
+echo "   • sakura@wintime.test         → owner Sakura Sushi"
+echo "   • etoile@wintime.test         → owner Beirut Étoile"

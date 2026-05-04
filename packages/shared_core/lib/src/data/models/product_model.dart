@@ -1,84 +1,70 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../../domain/entities/product_entity.dart';
 import '../../domain/enums/allergen.dart';
 import '../../domain/enums/product_label.dart';
 import '_helpers.dart';
 
-/// Mapper Firestore ↔ [ProductEntity].
-///
-/// Stocké à `/restaurants/{rid}/products/{pid}`.
+/// Mapper Postgres ↔ [ProductEntity].
+/// Table : `wintime.products`. Colonnes JSONB pour `sizes`/`options`/
+/// `nutritional_info`, `text[]` pour `ingredients`/`allergens`/`labels`.
 class ProductModel {
-  static ProductEntity fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> snap, {
-    String? restaurantIdOverride,
-  }) {
-    final data = snap.data() ?? const <String, dynamic>{};
+  static ProductEntity fromRow(Map<String, dynamic> row) {
     return ProductEntity(
-      id: snap.id,
-      restaurantId: restaurantIdOverride ??
-          (data['restaurantId'] as String?) ??
-          _restaurantIdFromPath(snap.reference.path),
-      categoryId: (data['categoryId'] as String?) ?? '',
-      name: (data['name'] as String?) ?? '',
-      description: (data['description'] as String?) ?? '',
-      price: asDouble(data['price']) ?? 0.0,
-      mainImageUrl: data['mainImageUrl'] as String?,
-      additionalImages: asList<String>(data['additionalImages']),
-      ingredients: asList<String>(data['ingredients']),
-      allergens: asList<String>(data['allergens'])
-          .map((e) => AllergenX.fromString(e))
+      id: row['id'] as String,
+      restaurantId: (row['restaurant_id'] as String?) ?? '',
+      categoryId: (row['category_id'] as String?) ?? '',
+      name: (row['name'] as String?) ?? '',
+      description: (row['description'] as String?) ?? '',
+      price: asDouble(row['price']) ?? 0.0,
+      mainImageUrl: row['main_image_url'] as String?,
+      additionalImages: asList<String>(row['additional_images']),
+      ingredients: asList<String>(row['ingredients']),
+      allergens: asList<String>(row['allergens'])
+          .map(AllergenX.fromString)
           .toList(),
-      nutritionalInfo: _nutritionalInfoFromMap(data['nutritionalInfo']),
-      labels: asList<String>(data['labels'])
-          .map((e) => ProductLabelX.fromString(e))
+      nutritionalInfo: _nutritionalInfoFromMap(row['nutritional_info']),
+      labels: asList<String>(row['labels'])
+          .map(ProductLabelX.fromString)
           .toList(),
-      sizes: asList<dynamic>(data['sizes']).map(_sizeFromMap).toList(),
-      options: asList<dynamic>(data['options']).map(_optionFromMap).toList(),
-      allowedModifications: asList<String>(data['allowedModifications']),
-      isAvailable: (data['isAvailable'] as bool?) ?? true,
-      stockQuantity: data['stockQuantity'] as int?,
-      estimatedPreparationTime:
-          (data['estimatedPreparationTime'] as int?) ?? 15,
-      isSeasonal: (data['isSeasonal'] as bool?) ?? false,
-      availableFrom: ts(data['availableFrom']),
-      availableUntil: ts(data['availableUntil']),
-      orderCount: (data['orderCount'] as int?) ?? 0,
-      rating: asDouble(data['rating']),
-      createdAt: ts(data['createdAt']) ?? DateTime.now(),
-      updatedAt: ts(data['updatedAt']) ?? DateTime.now(),
+      sizes: asList<dynamic>(row['sizes']).map(_sizeFromMap).toList(),
+      options: asList<dynamic>(row['options']).map(_optionFromMap).toList(),
+      allowedModifications: asList<String>(row['allowed_modifications']),
+      isAvailable: (row['is_available'] as bool?) ?? true,
+      stockQuantity: asInt(row['stock_quantity']),
+      estimatedPreparationTime: asInt(row['estimated_preparation_time']) ?? 15,
+      isSeasonal: (row['is_seasonal'] as bool?) ?? false,
+      availableFrom: ts(row['available_from']),
+      availableUntil: ts(row['available_until']),
+      orderCount: asInt(row['order_count']) ?? 0,
+      rating: asDouble(row['rating']),
+      createdAt: ts(row['created_at']) ?? DateTime.now(),
+      updatedAt: ts(row['updated_at']) ?? DateTime.now(),
     );
   }
 
-  static Map<String, dynamic> toFirestore(ProductEntity p) {
+  static Map<String, dynamic> toRow(ProductEntity p) {
     return {
-      'restaurantId': p.restaurantId,
-      'categoryId': p.categoryId,
+      if (p.id.isNotEmpty) 'id': p.id,
+      'restaurant_id': p.restaurantId,
+      'category_id': p.categoryId,
       'name': p.name,
       'description': p.description,
       'price': p.price,
-      'mainImageUrl': p.mainImageUrl,
-      'additionalImages': p.additionalImages,
+      'main_image_url': p.mainImageUrl,
+      'additional_images': p.additionalImages,
       'ingredients': p.ingredients,
       'allergens': p.allergens.map((e) => e.name).toList(),
-      'nutritionalInfo': _nutritionalInfoToMap(p.nutritionalInfo),
+      'nutritional_info': _nutritionalInfoToMap(p.nutritionalInfo),
       'labels': p.labels.map((e) => e.name).toList(),
       'sizes': p.sizes.map(_sizeToMap).toList(),
       'options': p.options.map(_optionToMap).toList(),
-      'allowedModifications': p.allowedModifications,
-      'isAvailable': p.isAvailable,
-      'stockQuantity': p.stockQuantity,
-      'estimatedPreparationTime': p.estimatedPreparationTime,
-      'isSeasonal': p.isSeasonal,
-      'availableFrom':
-          p.availableFrom != null ? Timestamp.fromDate(p.availableFrom!) : null,
-      'availableUntil': p.availableUntil != null
-          ? Timestamp.fromDate(p.availableUntil!)
-          : null,
-      'orderCount': p.orderCount,
+      'allowed_modifications': p.allowedModifications,
+      'is_available': p.isAvailable,
+      'stock_quantity': p.stockQuantity,
+      'estimated_preparation_time': p.estimatedPreparationTime,
+      'is_seasonal': p.isSeasonal,
+      'available_from': tsString(p.availableFrom),
+      'available_until': tsString(p.availableUntil),
       'rating': p.rating,
-      'createdAt': Timestamp.fromDate(p.createdAt),
-      'updatedAt': Timestamp.fromDate(p.updatedAt),
     };
   }
 
@@ -94,14 +80,12 @@ class ProductModel {
     );
   }
 
-  static Map<String, dynamic> _sizeToMap(ProductSize s) {
-    return {
-      'id': s.id,
-      'name': s.name,
-      'priceModifier': s.priceModifier,
-      'isDefault': s.isDefault,
-    };
-  }
+  static Map<String, dynamic> _sizeToMap(ProductSize s) => {
+        'id': s.id,
+        'name': s.name,
+        'priceModifier': s.priceModifier,
+        'isDefault': s.isDefault,
+      };
 
   static ProductOption _optionFromMap(dynamic raw) {
     if (raw is! Map) {
@@ -112,19 +96,17 @@ class ProductModel {
       name: (raw['name'] as String?) ?? '',
       additionalPrice: asDouble(raw['additionalPrice']) ?? 0.0,
       isAvailable: (raw['isAvailable'] as bool?) ?? true,
-      maxQuantity: raw['maxQuantity'] as int?,
+      maxQuantity: asInt(raw['maxQuantity']),
     );
   }
 
-  static Map<String, dynamic> _optionToMap(ProductOption o) {
-    return {
-      'id': o.id,
-      'name': o.name,
-      'additionalPrice': o.additionalPrice,
-      'isAvailable': o.isAvailable,
-      'maxQuantity': o.maxQuantity,
-    };
-  }
+  static Map<String, dynamic> _optionToMap(ProductOption o) => {
+        'id': o.id,
+        'name': o.name,
+        'additionalPrice': o.additionalPrice,
+        'isAvailable': o.isAvailable,
+        'maxQuantity': o.maxQuantity,
+      };
 
   static NutritionalInfo? _nutritionalInfoFromMap(dynamic raw) {
     if (raw is! Map) return null;
@@ -150,11 +132,5 @@ class ProductModel {
       'sugar': n.sugar,
       'salt': n.salt,
     };
-  }
-
-  static String _restaurantIdFromPath(String path) {
-    final parts = path.split('/');
-    final i = parts.indexOf('restaurants');
-    return (i >= 0 && i + 1 < parts.length) ? parts[i + 1] : '';
   }
 }
