@@ -24,6 +24,11 @@ class DemoAccount {
   final String password;
   final UserRole role;
 
+  /// Sous-titre indiquant si ce compte est lié à un resto seedé.
+  /// Sert à éviter la confusion : seul "Propriétaire" possède La Trattoria.
+  /// Les autres rôles n'ont rien et tombent sur l'empty state.
+  final String hint;
+
   const DemoAccount({
     required this.label,
     required this.icon,
@@ -31,6 +36,7 @@ class DemoAccount {
     required this.email,
     required this.password,
     required this.role,
+    required this.hint,
   });
 }
 
@@ -44,6 +50,7 @@ const List<DemoAccount> kDemoAccounts = [
     email: 'owner.demo@wintime.test',
     password: kDemoPassword,
     role: UserRole.restaurantOwner,
+    hint: '🏪 La Trattoria',
   ),
   DemoAccount(
     label: 'Manager',
@@ -52,6 +59,7 @@ const List<DemoAccount> kDemoAccounts = [
     email: 'manager.demo@wintime.test',
     password: kDemoPassword,
     role: UserRole.restaurantManager,
+    hint: 'Pas de resto',
   ),
   DemoAccount(
     label: 'Staff',
@@ -60,6 +68,7 @@ const List<DemoAccount> kDemoAccounts = [
     email: 'staff.demo@wintime.test',
     password: kDemoPassword,
     role: UserRole.restaurantStaff,
+    hint: 'Pas de resto',
   ),
   DemoAccount(
     label: 'Admin',
@@ -68,5 +77,6 @@ const List<DemoAccount> kDemoAccounts = [
     email: 'admin.demo@wintime.test',
     password: kDemoPassword,
     role: UserRole.admin,
+    hint: 'Pas de resto',
   ),
 ];

@@ -64,17 +64,35 @@ class DemoLoginPanel extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   for (final account in kDemoAccounts)
-                    OutlinedButton.icon(
+                    OutlinedButton(
                       onPressed: busy ? null : () => _pick(context, account),
-                      icon: Icon(account.icon, color: account.color),
-                      label: Text(account.label),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: account.color,
                         side: BorderSide(color: account.color),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 8,
                         ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(account.icon, color: account.color, size: 18),
+                              const SizedBox(width: 6),
+                              Text(account.label,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(account.hint,
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: account.color.withOpacity(0.8))),
+                        ],
                       ),
                     ),
                 ],

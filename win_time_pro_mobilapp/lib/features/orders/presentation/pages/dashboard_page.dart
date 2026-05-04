@@ -243,6 +243,7 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
     if (_restaurantId == null) {
+      final currentEmail = Supabase.instance.client.auth.currentUser?.email;
       return Scaffold(
         appBar: AppBar(
           title: const Text('Win Time Pro'),
@@ -261,6 +262,27 @@ class _DashboardPageState extends State<DashboardPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (currentEmail != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.account_circle,
+                            size: 16, color: Colors.blueAccent),
+                        const SizedBox(width: 6),
+                        Text('Connecté: $currentEmail',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.blueAccent)),
+                      ],
+                    ),
+                  ),
                 const Icon(Icons.store_outlined, size: 80, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
@@ -275,6 +297,24 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey[700],
                       ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    border: Border.all(color: Colors.amber.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'ℹ️ En démo, seul le compte "Propriétaire" '
+                    '(owner.demo@wintime.test) possède un resto seedé '
+                    '(La Trattoria). Manager / Staff / Admin n\'ont pas de '
+                    'resto par défaut — utilise "Créer mon restaurant" '
+                    'ou reconnecte-toi en Propriétaire.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
