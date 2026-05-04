@@ -79,6 +79,9 @@ dependencies:
   file_picker: ^8.1.6
   permission_handler: ^11.3.1
 
+  # Geolocation (pour pré-remplir adresse resto via "ma position")
+  geolocator: ^13.0.2
+
   # Date & Time
   timezone: ^0.9.4
 

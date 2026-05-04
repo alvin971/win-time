@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/pages/splash_page.dart';
+import '../../../profile/presentation/pages/my_restaurant_page.dart';
 import '../../domain/entities/order_entity.dart' as domain;
 
 // ---------------------------------------------------------------------------
@@ -193,6 +196,45 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {
+      // Continue même si la révocation côté serveur échoue (offline, etc.)
+    }
+    ServiceLocator.clearSession();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const SplashPage()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _openMyRestaurant({bool createMode = false}) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MyRestaurantPage(
+          restaurantId: createMode ? null : _restaurantId,
+        ),
+      ),
+    );
+    if (saved == true) {
+      // Si on vient de créer le resto, recharger le restaurantId
+      if (_restaurantId == null) {
+        await ServiceLocator.resolveCurrentRestaurantId();
+        if (mounted) {
+          setState(() {
+            _restaurantId = ServiceLocator.currentRestaurantId;
+          });
+          if (_restaurantId != null) {
+            // Démarrer le stream maintenant qu'on a un resto
+            await _bootstrap();
+          }
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -202,14 +244,24 @@ class _DashboardPageState extends State<DashboardPage> {
     }
     if (_restaurantId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Win Time Pro'), centerTitle: true),
+        appBar: AppBar(
+          title: const Text('Win Time Pro'),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Se déconnecter',
+              onPressed: _signOut,
+            ),
+          ],
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.store_outlined, size: 64, color: Colors.grey),
+                const Icon(Icons.store_outlined, size: 80, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
                   _error ?? 'Aucun restaurant associé à ce compte.',
@@ -218,9 +270,29 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Crée un restaurant depuis "Mon Restaurant" pour commencer à recevoir des commandes.',
+                  'Crée ton restaurant pour commencer à recevoir des commandes en temps réel.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[700],
+                      ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => _openMyRestaurant(createMode: true),
+                  icon: const Icon(Icons.add_business),
+                  label: const Text('Créer mon restaurant'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: _signOut,
+                  icon: const Icon(Icons.logout, size: 18),
+                  label: const Text('Se déconnecter'),
                 ),
               ],
             ),
@@ -238,8 +310,39 @@ class _DashboardPageState extends State<DashboardPage> {
         title: const Text('Win Time Pro'),
         centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () {}),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'restaurant':
+                  _openMyRestaurant();
+                  break;
+                case 'logout':
+                  _signOut();
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'restaurant',
+                child: ListTile(
+                  leading: Icon(Icons.storefront),
+                  title: Text('Mon Restaurant'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout, color: Colors.red),
+                  title: Text('Se déconnecter',
+                      style: TextStyle(color: Colors.red)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(
