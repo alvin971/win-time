@@ -44,8 +44,12 @@ dependencies:
   hive_flutter: ^1.1.0
 
   # Authentication & Security
+  # Note: Auth + DB live in Supabase (self-hosted, voir SETUP_SUPABASE.md).
+  # firebase_core/firebase_messaging gardés pour FCM uniquement (push notifs),
+  # déclenchés en lazy via NotificationService — fail-safe si la config
+  # Firebase est absente.
+  supabase_flutter: ^2.8.0
   firebase_core: ^3.10.0
-  firebase_auth: ^5.3.3
   firebase_messaging: ^15.1.5
 
   # Images & Cache

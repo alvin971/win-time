@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/wintime_supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/di/injection_container.dart';
@@ -43,9 +45,25 @@ void main() {
       );
     };
 
-    // Firebase : initialisation requise AVANT tout usage de FirebaseMessaging.
+    // Supabase : init OBLIGATOIRE avant ServiceLocator (qui dépend de
+    // Supabase.instance.client pour AuthRemoteDataSource + OrdersDataSource).
+    // En cas d'échec réseau, on continue quand même — l'utilisateur verra une
+    // erreur sur le login plutôt qu'un écran blanc.
+    try {
+      await Supabase.initialize(
+        url: WintimeSupabaseConfig.url,
+        anonKey: WintimeSupabaseConfig.anonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
+        debug: kDebugMode,
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('⚠️ Supabase.initialize failed/timed-out: $e');
+    }
+
+    // Firebase : optionnel (FCM uniquement, voir NotificationService).
     // Sans `initializeApp()`, `FirebaseMessaging.instance` throw "[core/no-app]".
-    // Avec timeout pour éviter de bloquer si la config est cassée.
     try {
       await Firebase.initializeApp().timeout(const Duration(seconds: 5));
     } catch (e) {

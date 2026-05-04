@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/entities/order_entity.dart' as domain;
 
 // ---------------------------------------------------------------------------
 // Modèles temporaires — seront remplacés par OrderEntity de shared_core
@@ -9,7 +14,11 @@ import '../../../../core/theme/app_colors.dart';
 enum _OrderStatus { pending, inProgress, ready, completed }
 
 class _Order {
+  /// ID d'affichage (ex. "#123") — peut différer de [remoteId].
   final String id;
+
+  /// UUID Postgres dans la table wintime.orders. Utilisé pour les UPDATEs.
+  final String remoteId;
   final String customerName;
   final String tableNumber;
   final List<_OrderItem> items;
@@ -19,6 +28,7 @@ class _Order {
 
   const _Order({
     required this.id,
+    required this.remoteId,
     required this.customerName,
     required this.tableNumber,
     required this.items,
@@ -26,16 +36,6 @@ class _Order {
     required this.orderTime,
     required this.total,
   });
-
-  _Order copyWith({_OrderStatus? status}) => _Order(
-        id: id,
-        customerName: customerName,
-        tableNumber: tableNumber,
-        items: items,
-        status: status ?? this.status,
-        orderTime: orderTime,
-        total: total,
-      );
 }
 
 class _OrderItem {
@@ -63,93 +63,172 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
-
-  // Données de démo — seront remplacées par OrdersBloc quand le data layer sera prêt
-  late List<_Order> _orders;
+  StreamSubscription<List<dynamic>>? _ordersSub;
+  String? _restaurantId;
+  List<_Order> _orders = const [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _orders = _buildDemoOrders();
+    _bootstrap();
   }
 
-  List<_Order> _buildDemoOrders() => [
-        _Order(
-          id: '#001',
-          customerName: 'Jean Dupont',
-          tableNumber: 'Table 5',
-          items: const [
-            _OrderItem(name: 'Pizza Margherita', quantity: 2, price: 12.50),
-            _OrderItem(name: 'Salade César', quantity: 1, price: 8.00),
-            _OrderItem(name: 'Coca-Cola', quantity: 2, price: 3.50),
-          ],
-          status: _OrderStatus.pending,
-          orderTime: DateTime.now().subtract(const Duration(minutes: 2)),
-          total: 40.00,
-        ),
-        _Order(
-          id: '#002',
-          customerName: 'Marie Martin',
-          tableNumber: 'Table 3',
-          items: const [
-            _OrderItem(name: 'Burger Bacon', quantity: 1, price: 15.00),
-            _OrderItem(name: 'Frites', quantity: 1, price: 4.50),
-            _OrderItem(name: 'Milkshake Vanille', quantity: 1, price: 5.00),
-          ],
-          status: _OrderStatus.pending,
-          orderTime: DateTime.now().subtract(const Duration(minutes: 5)),
-          total: 24.50,
-        ),
-        _Order(
-          id: '#003',
-          customerName: 'Pierre Durand',
-          tableNumber: 'Table 8',
-          items: const [
-            _OrderItem(name: 'Pâtes Carbonara', quantity: 1, price: 14.00),
-            _OrderItem(name: 'Tiramisu', quantity: 1, price: 6.50),
-          ],
-          status: _OrderStatus.inProgress,
-          orderTime: DateTime.now().subtract(const Duration(minutes: 15)),
-          total: 20.50,
-        ),
-        _Order(
-          id: '#004',
-          customerName: 'Sophie Bernard',
-          tableNumber: 'Table 2',
-          items: const [
-            _OrderItem(name: 'Steak Frites', quantity: 2, price: 18.00),
-            _OrderItem(name: 'Vin Rouge (verre)', quantity: 2, price: 6.00),
-          ],
-          status: _OrderStatus.inProgress,
-          orderTime: DateTime.now().subtract(const Duration(minutes: 20)),
-          total: 48.00,
-        ),
-        _Order(
-          id: '#005',
-          customerName: 'Luc Petit',
-          tableNumber: 'Table 1',
-          items: const [
-            _OrderItem(name: 'Sushi Mix', quantity: 1, price: 22.00),
-            _OrderItem(name: 'Soupe Miso', quantity: 1, price: 4.50),
-          ],
-          status: _OrderStatus.ready,
-          orderTime: DateTime.now().subtract(const Duration(minutes: 25)),
-          total: 26.50,
-        ),
-      ];
-
-  List<_Order> _getByStatus(_OrderStatus status) =>
-      _orders.where((o) => o.status == status).toList();
-
-  void _updateStatus(_Order order, _OrderStatus newStatus) {
+  /// Récupère le restaurantId du commerçant connecté puis abonne le stream
+  /// realtime des commandes actives sur ce resto. Le stream est alimenté par
+  /// la Realtime publication Postgres (cf. migrations/20260504_010 — ALTER
+  /// PUBLICATION supabase_realtime ADD TABLE wintime.orders).
+  Future<void> _bootstrap() async {
+    if (ServiceLocator.currentRestaurantId == null) {
+      await ServiceLocator.resolveCurrentRestaurantId();
+    }
+    final rid = ServiceLocator.currentRestaurantId;
+    if (!mounted) return;
+    if (rid == null) {
+      setState(() {
+        _loading = false;
+        _error = 'Aucun restaurant associé à ce compte.';
+      });
+      return;
+    }
     setState(() {
-      final idx = _orders.indexWhere((o) => o.id == order.id);
-      if (idx != -1) _orders[idx] = order.copyWith(status: newStatus);
+      _restaurantId = rid;
+      _loading = false;
+    });
+    _ordersSub = ServiceLocator.ordersDataSource
+        .watchActiveOrders(rid)
+        .listen((orders) {
+      if (!mounted) return;
+      setState(() {
+        _orders = orders.map(_mapOrder).toList();
+        _error = null;
+      });
+    }, onError: (Object e) {
+      if (!mounted) return;
+      setState(() => _error = 'Erreur stream commandes : $e');
     });
   }
 
   @override
+  void dispose() {
+    _ordersSub?.cancel();
+    super.dispose();
+  }
+
+  /// Mappe un OrderEntity (Pro) vers le `_Order` local du dashboard.
+  /// La table number n'a pas d'équivalent (commandes pickup) — on affiche
+  /// le order_number à la place.
+  _Order _mapOrder(dynamic order) {
+    // `order` est un OrderModel (extends OrderEntity du domain Pro).
+    final o = order as domain.OrderEntity;
+    return _Order(
+      id: '#${o.orderNumber}',
+      customerName: o.customerInfo.name,
+      tableNumber: 'Pickup',
+      items: o.items
+          .map((it) => _OrderItem(
+                name: it.productName,
+                quantity: it.quantity,
+                price: it.unitPrice,
+              ))
+          .toList(),
+      status: _statusFromDomain(o.status),
+      orderTime: o.createdAt,
+      total: o.totalAmount,
+      remoteId: o.id,
+    );
+  }
+
+  _OrderStatus _statusFromDomain(domain.OrderStatus s) {
+    switch (s) {
+      case domain.OrderStatus.pending:
+        return _OrderStatus.pending;
+      case domain.OrderStatus.accepted:
+      case domain.OrderStatus.preparing:
+        return _OrderStatus.inProgress;
+      case domain.OrderStatus.ready:
+        return _OrderStatus.ready;
+      case domain.OrderStatus.completed:
+      case domain.OrderStatus.cancelled:
+      case domain.OrderStatus.rejected:
+        return _OrderStatus.completed;
+    }
+  }
+
+  List<_Order> _getByStatus(_OrderStatus status) =>
+      _orders.where((o) => o.status == status).toList();
+
+  /// Action utilisateur — déclenche un UPDATE Supabase sur la commande.
+  /// Le stream realtime renverra la nouvelle valeur, donc pas de setState
+  /// optimiste : la source de vérité reste Postgres.
+  Future<void> _updateStatus(_Order order, _OrderStatus newStatus) async {
+    final remote = ServiceLocator.ordersDataSource;
+    try {
+      switch (newStatus) {
+        case _OrderStatus.inProgress:
+          await remote.acceptOrder(orderId: order.remoteId);
+          break;
+        case _OrderStatus.ready:
+          await remote.markOrderReady(orderId: order.remoteId);
+          break;
+        case _OrderStatus.completed:
+          if (order.status == _OrderStatus.pending) {
+            await remote.rejectOrder(
+                orderId: order.remoteId, reason: 'Refusée par le restaurant');
+          } else {
+            await remote.completeOrder(orderId: order.remoteId);
+          }
+          break;
+        case _OrderStatus.pending:
+          // pas d'action retour vers pending
+          break;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_restaurantId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Win Time Pro'), centerTitle: true),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.store_outlined, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  _error ?? 'Aucun restaurant associé à ce compte.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Crée un restaurant depuis "Mon Restaurant" pour commencer à recevoir des commandes.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final pending = _getByStatus(_OrderStatus.pending);
     final inProgress = _getByStatus(_OrderStatus.inProgress);
     final ready = _getByStatus(_OrderStatus.ready);
