@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
+import 'core/config/wintime_supabase_config.dart';
 import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/cart/presentation/bloc/cart_bloc.dart';
 
 void main() {
   // Garde-fou anti-écran-blanc : tout crash async non capturé est loggé
@@ -39,7 +43,23 @@ void main() {
       );
     };
 
-    // Firebase : optionnel (GoogleService-Info.plist absent en TestFlight pour le moment)
+    // Supabase : init OBLIGATOIRE avant configureDependencies (datasources
+    // restaurants/menu/orders en dépendent). En cas de fail, l'app affichera
+    // une erreur sur le login plutôt qu'un écran blanc.
+    try {
+      await Supabase.initialize(
+        url: WintimeSupabaseConfig.url,
+        anonKey: WintimeSupabaseConfig.anonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
+        debug: kDebugMode,
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('⚠️ Supabase.initialize failed/timed-out: $e');
+    }
+
+    // Firebase : optionnel (FCM uniquement)
     try {
       await Firebase.initializeApp().timeout(const Duration(seconds: 5));
     } catch (e) {
@@ -71,13 +91,16 @@ class WinTimeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: AppConfig.appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
-      routerConfig: appRouter,
+    return BlocProvider(
+      create: (_) => CartBloc(),
+      child: MaterialApp.router(
+        title: AppConfig.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.light,
+        routerConfig: appRouter,
+      ),
     );
   }
 }
