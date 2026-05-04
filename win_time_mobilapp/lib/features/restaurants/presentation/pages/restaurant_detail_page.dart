@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -63,15 +64,47 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 180,
+                expandedHeight: 220,
                 pinned: true,
                 title: Text(r.name),
                 flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    color: Colors.orange.shade100,
-                    child: const Center(
-                      child: Icon(Icons.restaurant, size: 80, color: Colors.orange),
-                    ),
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if ((r.bannerUrl ?? '').isNotEmpty)
+                        CachedNetworkImage(
+                          imageUrl: r.bannerUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: Colors.orange.shade100,
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.orange.shade100,
+                            child: const Center(
+                              child: Icon(Icons.restaurant,
+                                  size: 80, color: Colors.orange),
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          color: Colors.orange.shade100,
+                          child: const Center(
+                            child: Icon(Icons.restaurant,
+                                size: 80, color: Colors.orange),
+                          ),
+                        ),
+                      // Gradient overlay sombre en bas pour lisibilité du titre
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.center,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black54],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

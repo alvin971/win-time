@@ -102,8 +102,8 @@
         "phoneNumber": "+33145678901",
         "websiteUrl": "https://trattoria-chatelet.fr"
       },
-      "logoUrl": null,
-      "bannerUrl": null,
+      "logoUrl": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop",
+      "bannerUrl": "https://images.unsplash.com/photo-1571066811602-716837d681de?w=1200&h=675&fit=crop",
       "galleryImages": [],
       "averagePreparationTime": 25,
       "isActive": true,
@@ -142,8 +142,8 @@
         "phoneNumber": "+33142869012",
         "websiteUrl": "https://bistrot-louvre.fr"
       },
-      "logoUrl": null,
-      "bannerUrl": null,
+      "logoUrl": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=400&fit=crop",
+      "bannerUrl": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&h=675&fit=crop",
       "galleryImages": [],
       "averagePreparationTime": 35,
       "isActive": true,
@@ -181,8 +181,8 @@
         "email": "hello@sakura-sushi.fr",
         "phoneNumber": "+33143257890"
       },
-      "logoUrl": null,
-      "bannerUrl": null,
+      "logoUrl": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=400&fit=crop",
+      "bannerUrl": "https://images.unsplash.com/photo-1535007813616-79dc02ba4021?w=1200&h=675&fit=crop",
       "galleryImages": [],
       "averagePreparationTime": 20,
       "isActive": true,
@@ -220,8 +220,8 @@
         "email": "info@beirut-etoile.fr",
         "phoneNumber": "+33144098765"
       },
-      "logoUrl": null,
-      "bannerUrl": null,
+      "logoUrl": "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=400&fit=crop",
+      "bannerUrl": "https://images.unsplash.com/photo-1564834361894-0fbcdec0d985?w=1200&h=675&fit=crop",
       "galleryImages": [],
       "averagePreparationTime": 15,
       "isActive": true,

@@ -197,11 +197,12 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _signOut() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-    } catch (_) {
-      // Continue même si la révocation côté serveur échoue (offline, etc.)
-    }
+    // CRITIQUE : passer par AuthRepository.logout() (pas juste Supabase.signOut)
+    // car logout() appelle aussi _local.clearAll() pour vider le UserModel
+    // caché en flutter_secure_storage. Sans ça, SplashPage relit le cache,
+    // émet AuthAuthenticated, et ré-route immédiatement vers Dashboard
+    // → boucle infinie où le user ne peut jamais revenir au login.
+    await ServiceLocator.authRepository.logout();
     ServiceLocator.clearSession();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

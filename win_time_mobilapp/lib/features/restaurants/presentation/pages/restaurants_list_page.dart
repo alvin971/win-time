@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -193,23 +194,58 @@ class _RestaurantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLogo = (restaurant.logoUrl ?? '').isNotEmpty;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => context.push('/home/restaurants/${restaurant.id}'),
-        child: Padding(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Banner image en haut (si dispo)
+            if ((restaurant.bannerUrl ?? '').isNotEmpty)
+              SizedBox(
+                height: 140,
+                child: CachedNetworkImage(
+                  imageUrl: restaurant.bannerUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: Colors.orange.shade50,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Colors.orange.shade50,
+                    child: const Icon(Icons.restaurant, size: 48, color: Colors.orange),
+                  ),
+                ),
+              ),
+            Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: hasLogo
+                      ? CachedNetworkImage(
+                          imageUrl: restaurant.logoUrl!,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.orange.shade50,
+                            child: const Icon(Icons.restaurant,
+                                color: Colors.orange, size: 32),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.orange.shade50,
+                          child: const Icon(Icons.restaurant,
+                              color: Colors.orange, size: 32),
+                        ),
                 ),
-                child: const Icon(Icons.restaurant, color: Colors.orange, size: 32),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -267,6 +303,8 @@ class _RestaurantCard extends StatelessWidget {
               const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
+        ),
+          ],
         ),
       ),
     );
