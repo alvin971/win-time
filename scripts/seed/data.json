@@ -16,28 +16,31 @@
       "uid": "demo-manager-001",
       "email": "manager.demo@wintime.test",
       "password": "demo-pass-1234",
-      "role": "restaurantManager",
+      "role": "restaurantOwner",
       "firstName": "Marc",
       "lastName": "Manager",
-      "phoneNumber": "+33612345602"
+      "phoneNumber": "+33612345602",
+      "ownsRestaurantId": "demo-rest-louvre"
     },
     {
       "uid": "demo-staff-001",
       "email": "staff.demo@wintime.test",
       "password": "demo-pass-1234",
-      "role": "restaurantStaff",
+      "role": "restaurantOwner",
       "firstName": "Sam",
       "lastName": "Staff",
-      "phoneNumber": "+33612345603"
+      "phoneNumber": "+33612345603",
+      "ownsRestaurantId": "demo-rest-sakura"
     },
     {
       "uid": "demo-admin-001",
       "email": "admin.demo@wintime.test",
       "password": "demo-pass-1234",
-      "role": "admin",
+      "role": "restaurantOwner",
       "firstName": "Adam",
       "lastName": "Admin",
-      "phoneNumber": "+33612345604"
+      "phoneNumber": "+33612345604",
+      "ownsRestaurantId": "demo-rest-etoile"
     },
     {
       "uid": "demo-customer-001",
@@ -123,7 +126,7 @@
     },
     {
       "id": "demo-rest-louvre",
-      "ownerId": "owner-fr-002",
+      "ownerId": "demo-manager-001",
       "name": "Le Bistrot du Louvre",
       "description": "Cuisine française classique, plats de saison et carte des vins sélectionnée par notre sommelier.",
       "slogan": "La gastronomie à la française",
@@ -163,7 +166,7 @@
     },
     {
       "id": "demo-rest-sakura",
-      "ownerId": "owner-jp-003",
+      "ownerId": "demo-staff-001",
       "name": "Sakura Sushi",
       "description": "Sushis et makis préparés à la commande par notre chef japonais. Poisson frais arrivage quotidien.",
       "slogan": "Le Japon authentique",
@@ -202,7 +205,7 @@
     },
     {
       "id": "demo-rest-etoile",
-      "ownerId": "owner-lb-004",
+      "ownerId": "demo-admin-001",
       "name": "Beirut Étoile",
       "description": "Mezze libanais, grillades et pâtisseries orientales. Recettes familiales transmises depuis 1972.",
       "slogan": "Saveurs du Liban",

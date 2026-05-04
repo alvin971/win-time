@@ -50,7 +50,7 @@ const List<DemoAccount> kDemoAccounts = [
     email: 'owner.demo@wintime.test',
     password: kDemoPassword,
     role: UserRole.restaurantOwner,
-    hint: '🏪 La Trattoria',
+    hint: '🇮🇹 La Trattoria',
   ),
   DemoAccount(
     label: 'Manager',
@@ -58,8 +58,8 @@ const List<DemoAccount> kDemoAccounts = [
     color: Colors.indigo,
     email: 'manager.demo@wintime.test',
     password: kDemoPassword,
-    role: UserRole.restaurantManager,
-    hint: 'Pas de resto',
+    role: UserRole.restaurantOwner,
+    hint: '🇫🇷 Bistrot du Louvre',
   ),
   DemoAccount(
     label: 'Staff',
@@ -67,8 +67,8 @@ const List<DemoAccount> kDemoAccounts = [
     color: Colors.teal,
     email: 'staff.demo@wintime.test',
     password: kDemoPassword,
-    role: UserRole.restaurantStaff,
-    hint: 'Pas de resto',
+    role: UserRole.restaurantOwner,
+    hint: '🇯🇵 Sakura Sushi',
   ),
   DemoAccount(
     label: 'Admin',
@@ -76,7 +76,7 @@ const List<DemoAccount> kDemoAccounts = [
     color: Colors.deepPurple,
     email: 'admin.demo@wintime.test',
     password: kDemoPassword,
-    role: UserRole.admin,
-    hint: 'Pas de resto',
+    role: UserRole.restaurantOwner,
+    hint: '🇱🇧 Beirut Étoile',
   ),
 ];

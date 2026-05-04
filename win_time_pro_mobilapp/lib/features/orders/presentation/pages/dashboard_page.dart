@@ -308,11 +308,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'ℹ️ En démo, seul le compte "Propriétaire" '
-                    '(owner.demo@wintime.test) possède un resto seedé '
-                    '(La Trattoria). Manager / Staff / Admin n\'ont pas de '
-                    'resto par défaut — utilise "Créer mon restaurant" '
-                    'ou reconnecte-toi en Propriétaire.',
+                    'ℹ️ Aucun restaurant trouvé pour ce compte. '
+                    'Tu peux en créer un nouveau ou te reconnecter avec '
+                    'un autre compte démo (chaque rôle possède un resto seedé).',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11),
                   ),
