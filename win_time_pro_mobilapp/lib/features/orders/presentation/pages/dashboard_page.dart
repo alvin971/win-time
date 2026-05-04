@@ -211,6 +211,31 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  /// Pull-to-refresh / bouton refresh AppBar.
+  /// Force un re-fetch one-shot via REST (le stream realtime continue
+  /// d'écouter en parallèle).
+  Future<void> _pullRefresh() async {
+    final rid = _restaurantId;
+    if (rid == null) {
+      await _bootstrap();
+      return;
+    }
+    try {
+      final orders =
+          await ServiceLocator.ordersDataSource.getActiveOrders(restaurantId: rid);
+      if (!mounted) return;
+      setState(() {
+        _orders = orders.map(_mapOrder).toList();
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Refresh échoué : $e')),
+      );
+    }
+  }
+
   Future<void> _openMyRestaurant({bool createMode = false}) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -349,6 +374,11 @@ class _DashboardPageState extends State<DashboardPage> {
         title: const Text('Win Time Pro'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Actualiser',
+            onPressed: _pullRefresh,
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
@@ -414,11 +444,16 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-          // Liste
-          Expanded(child: _OrdersList(
-            orders: [pending, inProgress, ready][_selectedIndex],
-            onUpdateStatus: _updateStatus,
-          )),
+          // Liste avec pull-to-refresh
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _pullRefresh,
+              child: _OrdersList(
+                orders: [pending, inProgress, ready][_selectedIndex],
+                onUpdateStatus: _updateStatus,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -504,19 +539,38 @@ class _OrdersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // AlwaysScrollableScrollPhysics nécessaire pour que RefreshIndicator
+    // s'active même quand la liste est vide.
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('Aucune commande', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text('Aucune commande',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey[600],
+                          )),
+                  const SizedBox(height: 8),
+                  Text('Tire vers le bas pour actualiser',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[500],
+                          )),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: orders.length,
       itemBuilder: (_, i) => _OrderCard(order: orders[i], onUpdateStatus: onUpdateStatus),

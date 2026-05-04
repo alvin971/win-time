@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_core/shared_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -32,26 +34,90 @@ class SupabaseOrdersDataSource {
   }
 
   /// Stream realtime d'une commande spécifique (pour la page tracking).
+  ///
+  /// IMPORTANT : on n'utilise PAS `.schema().from().stream()` (le `.stream()`
+  /// du SDK supabase_flutter ignore le `.schema()` qui le précède). On passe
+  /// par l'API channel `onPostgresChanges` avec le param `schema:` explicite.
   Stream<OrderEntity?> watchOrderById(String orderId) {
-    return _client
-        .schema(WintimeSupabaseConfig.schema)
-        .from('orders')
-        .stream(primaryKey: ['id'])
-        .eq('id', orderId)
-        .map((rows) => rows.isEmpty
-            ? null
-            : OrderModel.fromRow(rows.first));
+    final controller = StreamController<OrderEntity?>();
+
+    Future<void> refresh() async {
+      try {
+        final order = await getById(orderId);
+        if (!controller.isClosed) controller.add(order);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    refresh();
+
+    final channel = _client.channel(
+      'order-$orderId-${DateTime.now().millisecondsSinceEpoch}',
+    );
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: WintimeSupabaseConfig.schema,
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: orderId,
+          ),
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+    return controller.stream;
   }
 
   /// Stream des commandes du customer connecté, ordre date desc.
+  /// Même stratégie que `watchOrderById` (channel API explicite).
   Stream<List<OrderEntity>> watchMyOrders(String customerId) {
-    return _client
-        .schema(WintimeSupabaseConfig.schema)
-        .from('orders')
-        .stream(primaryKey: ['id'])
-        .eq('customer_id', customerId)
-        .order('created_at', ascending: false)
-        .map((rows) => rows.map(OrderModel.fromRow).toList());
+    final controller = StreamController<List<OrderEntity>>();
+
+    Future<void> refresh() async {
+      try {
+        final rows = await _table
+            .select()
+            .eq('customer_id', customerId)
+            .order('created_at', ascending: false);
+        final orders = (rows as List<dynamic>)
+            .map((r) => OrderModel.fromRow((r as Map).cast<String, dynamic>()))
+            .toList();
+        if (!controller.isClosed) controller.add(orders);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    refresh();
+
+    final channel = _client.channel(
+      'my-orders-$customerId-${DateTime.now().millisecondsSinceEpoch}',
+    );
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: WintimeSupabaseConfig.schema,
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'customer_id',
+            value: customerId,
+          ),
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+    return controller.stream;
   }
 
   /// Annule une commande (uniquement si encore en pending).
