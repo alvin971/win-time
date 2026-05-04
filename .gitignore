@@ -1,49 +1,29 @@
-# Flutter/Dart
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
-*.g.dart
-*.freezed.dart
-*.mocks.dart
-injection.config.dart
-
-# Android
-**/android/.gradle
-**/android/captures/
-**/android/gradlew
-**/android/gradlew.bat
-**/android/local.properties
-**/android/**/GeneratedPluginRegistrant.java
-**/android/key.properties
-**/*.jks
-
-# iOS
-**/ios/Flutter/App.framework
-**/ios/Flutter/Flutter.framework
-**/ios/Flutter/Flutter.podspec
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/ephemeral/
-**/ios/Flutter/app.flx
-**/ios/Flutter/app.zip
+**/build/
+**/.dart_tool/
 **/ios/Pods/
 **/ios/.symlinks/
-**/ios/Runner/GeneratedPluginRegistrant.*
-**/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
-
-# Env / secrets
+**/ios/Flutter/Flutter.framework/
+**/ios/Flutter/Flutter.podspec
+**/android/.gradle/
+**/android/app/build/
+**/android/local.properties
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+*.iml
+.DS_Store
 .env
 .env.*
-*.env
-google-services.json
-GoogleService-Info.plist
+**/google-services.json
+**/GoogleService-Info.plist
+*.keystore
+legacy/
 
-# IDE
-.idea/
-.vscode/
-*.iml
-
-# macOS
-**/macos/Flutter/GeneratedPluginRegistrant.swift
+# Secrets — NE JAMAIS commit (PAT GitHub, service account Firebase, etc.)
 .git-credentials
+scripts/service-account.json
+scripts/node_modules/
+**/.firebase/

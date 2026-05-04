@@ -1,0 +1,12 @@
+{
+  "name": "wintime-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts CI/CD et seed Firestore pour Win Time",
+  "scripts": {
+    "seed": "node seed_firestore.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

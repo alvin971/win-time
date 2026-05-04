@@ -1,0 +1,310 @@
+{
+  "_comment": "Seed data Win Time. Voir scripts/seed_firestore.js pour le runner. Tous les passwords sont 'demo-pass-1234'. Les UIDs sont déterministes pour pouvoir relancer le seed sans casser les références. Restaurants groupés autour du centre de Paris pour test geohash.",
+
+  "users": [
+    {
+      "uid": "demo-owner-001",
+      "email": "owner.demo@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantOwner",
+      "firstName": "Olivia",
+      "lastName": "Owner",
+      "phoneNumber": "+33612345601",
+      "ownsRestaurantId": "demo-rest-trattoria"
+    },
+    {
+      "uid": "demo-manager-001",
+      "email": "manager.demo@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantManager",
+      "firstName": "Marc",
+      "lastName": "Manager",
+      "phoneNumber": "+33612345602"
+    },
+    {
+      "uid": "demo-staff-001",
+      "email": "staff.demo@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantStaff",
+      "firstName": "Sam",
+      "lastName": "Staff",
+      "phoneNumber": "+33612345603"
+    },
+    {
+      "uid": "demo-admin-001",
+      "email": "admin.demo@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "admin",
+      "firstName": "Adam",
+      "lastName": "Admin",
+      "phoneNumber": "+33612345604"
+    },
+    {
+      "uid": "demo-customer-001",
+      "email": "demo.customer@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "client",
+      "firstName": "Camille",
+      "lastName": "Client",
+      "phoneNumber": "+33612345605"
+    },
+    {
+      "uid": "owner-fr-002",
+      "email": "louvre@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantOwner",
+      "firstName": "Pierre",
+      "lastName": "Dupont",
+      "phoneNumber": "+33612345606",
+      "ownsRestaurantId": "demo-rest-louvre"
+    },
+    {
+      "uid": "owner-jp-003",
+      "email": "sakura@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantOwner",
+      "firstName": "Yuki",
+      "lastName": "Tanaka",
+      "phoneNumber": "+33612345607",
+      "ownsRestaurantId": "demo-rest-sakura"
+    },
+    {
+      "uid": "owner-lb-004",
+      "email": "etoile@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantOwner",
+      "firstName": "Karim",
+      "lastName": "Saade",
+      "phoneNumber": "+33612345608",
+      "ownsRestaurantId": "demo-rest-etoile"
+    }
+  ],
+
+  "restaurants": [
+    {
+      "id": "demo-rest-trattoria",
+      "ownerId": "demo-owner-001",
+      "name": "La Trattoria du Châtelet",
+      "description": "Cuisine italienne traditionnelle, pâtes fraîches faites maison et pizza au feu de bois.",
+      "slogan": "L'Italie au cœur de Paris",
+      "cuisineType": "italian",
+      "priceRange": "moderate",
+      "address": {
+        "street": "12 Rue de Rivoli",
+        "city": "Paris",
+        "postalCode": "75004",
+        "country": "France",
+        "latitude": 48.8566,
+        "longitude": 2.3522
+      },
+      "contactInfo": {
+        "email": "contact@trattoria-chatelet.fr",
+        "phoneNumber": "+33145678901",
+        "websiteUrl": "https://trattoria-chatelet.fr"
+      },
+      "logoUrl": null,
+      "bannerUrl": null,
+      "galleryImages": [],
+      "averagePreparationTime": 25,
+      "isActive": true,
+      "isApproved": true,
+      "acceptingOrders": true,
+      "rating": 4.5,
+      "totalReviews": 124,
+      "businessHours": {
+        "monday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:30", "closeTime": "23:00" } },
+        "tuesday":   { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:30", "closeTime": "23:00" } },
+        "wednesday": { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:30", "closeTime": "23:00" } },
+        "thursday":  { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:30", "closeTime": "23:00" } },
+        "friday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:30", "closeTime": "23:30" } },
+        "saturday":  { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "15:00" }, "afternoon": { "openTime": "18:30", "closeTime": "23:30" } },
+        "sunday":    { "isOpen": false }
+      }
+    },
+    {
+      "id": "demo-rest-louvre",
+      "ownerId": "owner-fr-002",
+      "name": "Le Bistrot du Louvre",
+      "description": "Cuisine française classique, plats de saison et carte des vins sélectionnée par notre sommelier.",
+      "slogan": "La gastronomie à la française",
+      "cuisineType": "french",
+      "priceRange": "expensive",
+      "address": {
+        "street": "5 Rue de l'Amiral de Coligny",
+        "city": "Paris",
+        "postalCode": "75001",
+        "country": "France",
+        "latitude": 48.8606,
+        "longitude": 2.3376
+      },
+      "contactInfo": {
+        "email": "reservation@bistrot-louvre.fr",
+        "phoneNumber": "+33142869012",
+        "websiteUrl": "https://bistrot-louvre.fr"
+      },
+      "logoUrl": null,
+      "bannerUrl": null,
+      "galleryImages": [],
+      "averagePreparationTime": 35,
+      "isActive": true,
+      "isApproved": true,
+      "acceptingOrders": true,
+      "rating": 4.7,
+      "totalReviews": 89,
+      "businessHours": {
+        "monday":    { "isOpen": false },
+        "tuesday":   { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "14:30" }, "afternoon": { "openTime": "19:00", "closeTime": "22:30" } },
+        "wednesday": { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "14:30" }, "afternoon": { "openTime": "19:00", "closeTime": "22:30" } },
+        "thursday":  { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "14:30" }, "afternoon": { "openTime": "19:00", "closeTime": "22:30" } },
+        "friday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "14:30" }, "afternoon": { "openTime": "19:00", "closeTime": "23:00" } },
+        "saturday":  { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "15:00" }, "afternoon": { "openTime": "19:00", "closeTime": "23:00" } },
+        "sunday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "15:00" } }
+      }
+    },
+    {
+      "id": "demo-rest-sakura",
+      "ownerId": "owner-jp-003",
+      "name": "Sakura Sushi",
+      "description": "Sushis et makis préparés à la commande par notre chef japonais. Poisson frais arrivage quotidien.",
+      "slogan": "Le Japon authentique",
+      "cuisineType": "japanese",
+      "priceRange": "moderate",
+      "address": {
+        "street": "22 Quai aux Fleurs",
+        "city": "Paris",
+        "postalCode": "75004",
+        "country": "France",
+        "latitude": 48.8530,
+        "longitude": 2.3499
+      },
+      "contactInfo": {
+        "email": "hello@sakura-sushi.fr",
+        "phoneNumber": "+33143257890"
+      },
+      "logoUrl": null,
+      "bannerUrl": null,
+      "galleryImages": [],
+      "averagePreparationTime": 20,
+      "isActive": true,
+      "isApproved": true,
+      "acceptingOrders": true,
+      "rating": 4.3,
+      "totalReviews": 211,
+      "businessHours": {
+        "monday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:00", "closeTime": "22:30" } },
+        "tuesday":   { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:00", "closeTime": "22:30" } },
+        "wednesday": { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:00", "closeTime": "22:30" } },
+        "thursday":  { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:00", "closeTime": "22:30" } },
+        "friday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "14:30" }, "afternoon": { "openTime": "18:00", "closeTime": "23:00" } },
+        "saturday":  { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "23:00" } },
+        "sunday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "22:00" } }
+      }
+    },
+    {
+      "id": "demo-rest-etoile",
+      "ownerId": "owner-lb-004",
+      "name": "Beirut Étoile",
+      "description": "Mezze libanais, grillades et pâtisseries orientales. Recettes familiales transmises depuis 1972.",
+      "slogan": "Saveurs du Liban",
+      "cuisineType": "lebanese",
+      "priceRange": "budget",
+      "address": {
+        "street": "8 Avenue Mac-Mahon",
+        "city": "Paris",
+        "postalCode": "75017",
+        "country": "France",
+        "latitude": 48.8738,
+        "longitude": 2.2950
+      },
+      "contactInfo": {
+        "email": "info@beirut-etoile.fr",
+        "phoneNumber": "+33144098765"
+      },
+      "logoUrl": null,
+      "bannerUrl": null,
+      "galleryImages": [],
+      "averagePreparationTime": 15,
+      "isActive": true,
+      "isApproved": true,
+      "acceptingOrders": true,
+      "rating": 4.6,
+      "totalReviews": 178,
+      "businessHours": {
+        "monday":    { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:00" } },
+        "tuesday":   { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:00" } },
+        "wednesday": { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:00" } },
+        "thursday":  { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:00" } },
+        "friday":    { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:30" } },
+        "saturday":  { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:30" } },
+        "sunday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "22:00" } }
+      }
+    }
+  ],
+
+  "menus": {
+    "demo-rest-trattoria": {
+      "categories": [
+        { "id": "cat-trat-antipasti", "name": "Antipasti", "displayOrder": 1 },
+        { "id": "cat-trat-pizza",     "name": "Pizzas",    "displayOrder": 2 },
+        { "id": "cat-trat-pasta",     "name": "Pâtes",     "displayOrder": 3 },
+        { "id": "cat-trat-dolci",     "name": "Dolci",     "displayOrder": 4 }
+      ],
+      "products": [
+        { "id": "prod-trat-bruschetta", "categoryId": "cat-trat-antipasti", "name": "Bruschetta tomate-basilic", "description": "Pain grillé, tomates fraîches, ail, basilic, huile d'olive extra-vierge.", "price": 7.50, "allergens": ["gluten"], "labels": ["vegetarian"] },
+        { "id": "prod-trat-burrata",    "categoryId": "cat-trat-antipasti", "name": "Burrata des Pouilles",      "description": "Burrata crémeuse, tomates anciennes, roquette, jambon de Parme.", "price": 13.00, "allergens": ["milk"], "labels": ["bestseller"] },
+        { "id": "prod-trat-margherita", "categoryId": "cat-trat-pizza",     "name": "Pizza Margherita",          "description": "Sauce tomate, mozzarella di bufala, basilic frais.", "price": 12.50, "allergens": ["gluten", "milk"], "labels": ["vegetarian"] },
+        { "id": "prod-trat-quattro",    "categoryId": "cat-trat-pizza",     "name": "Pizza Quattro Formaggi",    "description": "Mozzarella, gorgonzola, pecorino, parmesan.", "price": 14.00, "allergens": ["gluten", "milk"], "labels": ["vegetarian", "bestseller"] },
+        { "id": "prod-trat-carbonara",  "categoryId": "cat-trat-pasta",     "name": "Spaghetti Carbonara",       "description": "Spaghetti, guanciale, jaune d'œuf, pecorino romano, poivre.", "price": 13.50, "allergens": ["gluten", "eggs", "milk"], "labels": ["chefRecommendation"] },
+        { "id": "prod-trat-bolognese",  "categoryId": "cat-trat-pasta",     "name": "Tagliatelles Bolognaise",   "description": "Tagliatelles fraîches, sauce bolognaise mijotée 6h.", "price": 14.50, "allergens": ["gluten", "eggs"], "labels": [] },
+        { "id": "prod-trat-tiramisu",   "categoryId": "cat-trat-dolci",     "name": "Tiramisu maison",           "description": "Mascarpone, café espresso, cacao, biscuits boudoirs.", "price": 7.00, "allergens": ["gluten", "eggs", "milk"], "labels": ["homemade", "bestseller"] }
+      ]
+    },
+    "demo-rest-louvre": {
+      "categories": [
+        { "id": "cat-lvr-entrees",   "name": "Entrées",  "displayOrder": 1 },
+        { "id": "cat-lvr-plats",     "name": "Plats",    "displayOrder": 2 },
+        { "id": "cat-lvr-fromages",  "name": "Fromages", "displayOrder": 3 },
+        { "id": "cat-lvr-desserts",  "name": "Desserts", "displayOrder": 4 }
+      ],
+      "products": [
+        { "id": "prod-lvr-foie",      "categoryId": "cat-lvr-entrees",  "name": "Foie gras maison",          "description": "Foie gras de canard mi-cuit, chutney de figues, pain brioché toasté.", "price": 22.00, "allergens": ["gluten", "eggs"], "labels": ["homemade", "chefRecommendation"] },
+        { "id": "prod-lvr-tartare",   "categoryId": "cat-lvr-entrees",  "name": "Tartare de bœuf coupé au couteau", "description": "Bœuf charolais, câpres, échalote, jaune d'œuf, frites maison.", "price": 19.50, "allergens": ["eggs", "mustard"], "labels": ["homemade"] },
+        { "id": "prod-lvr-canard",    "categoryId": "cat-lvr-plats",    "name": "Magret de canard",           "description": "Magret rôti, sauce au miel et romarin, gratin dauphinois.", "price": 28.00, "allergens": ["milk"], "labels": ["bestseller"] },
+        { "id": "prod-lvr-saumon",    "categoryId": "cat-lvr-plats",    "name": "Pavé de saumon basse temp.", "description": "Saumon Label Rouge, beurre blanc, légumes du moment.", "price": 26.00, "allergens": ["fish", "milk"], "labels": [] },
+        { "id": "prod-lvr-fromages",  "categoryId": "cat-lvr-fromages", "name": "Plateau de fromages affinés","description": "Sélection de 5 fromages français de notre maître affineur.", "price": 14.00, "allergens": ["milk"], "labels": ["chefRecommendation"] },
+        { "id": "prod-lvr-creme",     "categoryId": "cat-lvr-desserts", "name": "Crème brûlée vanille",       "description": "Vanille de Madagascar, sucre cassonade caramélisé.", "price": 9.50, "allergens": ["eggs", "milk"], "labels": ["homemade", "bestseller"] }
+      ]
+    },
+    "demo-rest-sakura": {
+      "categories": [
+        { "id": "cat-sak-sushi",  "name": "Sushis",  "displayOrder": 1 },
+        { "id": "cat-sak-makis",  "name": "Makis",   "displayOrder": 2 },
+        { "id": "cat-sak-sashis", "name": "Sashimi", "displayOrder": 3 },
+        { "id": "cat-sak-bento",  "name": "Bentos",  "displayOrder": 4 }
+      ],
+      "products": [
+        { "id": "prod-sak-saumon",   "categoryId": "cat-sak-sushi",  "name": "Sushi saumon (×6)",         "description": "Saumon de Norvège, riz vinaigré.", "price": 9.50, "allergens": ["fish", "soy"], "labels": ["bestseller"] },
+        { "id": "prod-sak-thon",     "categoryId": "cat-sak-sushi",  "name": "Sushi thon (×6)",           "description": "Thon rouge, riz vinaigré.", "price": 11.00, "allergens": ["fish", "soy"], "labels": [] },
+        { "id": "prod-sak-cali",     "categoryId": "cat-sak-makis",  "name": "California rolls (×8)",     "description": "Saumon, avocat, concombre, sésame.", "price": 8.50, "allergens": ["fish", "sesame", "soy"], "labels": [] },
+        { "id": "prod-sak-spicy",    "categoryId": "cat-sak-makis",  "name": "Spicy tuna roll (×6)",      "description": "Thon rouge, sauce épicée maison, ciboulette.", "price": 10.00, "allergens": ["fish", "soy"], "labels": ["spicy", "chefRecommendation"] },
+        { "id": "prod-sak-sashimi",  "categoryId": "cat-sak-sashis", "name": "Mix sashimi (×12)",         "description": "Saumon, thon, daurade, lotte.", "price": 18.00, "allergens": ["fish"], "labels": ["bestseller"] },
+        { "id": "prod-sak-bento",    "categoryId": "cat-sak-bento",  "name": "Bento du chef",             "description": "Tempura crevettes, gyoza, riz, mini-salade, dessert du jour.", "price": 16.50, "allergens": ["gluten", "fish", "soy", "crustaceans"], "labels": ["chefRecommendation"] }
+      ]
+    },
+    "demo-rest-etoile": {
+      "categories": [
+        { "id": "cat-bru-mezze",     "name": "Mezzé",     "displayOrder": 1 },
+        { "id": "cat-bru-grillades", "name": "Grillades", "displayOrder": 2 },
+        { "id": "cat-bru-douceurs",  "name": "Douceurs",  "displayOrder": 3 }
+      ],
+      "products": [
+        { "id": "prod-bru-houmous",  "categoryId": "cat-bru-mezze",     "name": "Houmous",                "description": "Pois chiches, tahiné, citron, huile d'olive.", "price": 5.50, "allergens": ["sesame"], "labels": ["vegan", "bestseller"] },
+        { "id": "prod-bru-taboule",  "categoryId": "cat-bru-mezze",     "name": "Taboulé libanais",       "description": "Persil plat, tomate, oignon, semoule fine, citron.", "price": 6.00, "allergens": ["gluten"], "labels": ["vegetarian"] },
+        { "id": "prod-bru-falafel",  "categoryId": "cat-bru-mezze",     "name": "Falafels (×6)",          "description": "Boulettes de pois chiches frites, sauce tahini.", "price": 7.50, "allergens": ["gluten", "sesame"], "labels": ["vegan"] },
+        { "id": "prod-bru-chich",    "categoryId": "cat-bru-grillades", "name": "Brochette d'agneau",     "description": "Chich-taouk d'agneau mariné aux épices, riz pilaf, salade.", "price": 14.00, "allergens": [], "labels": ["bestseller"] },
+        { "id": "prod-bru-poulet",   "categoryId": "cat-bru-grillades", "name": "Chich-taouk poulet",     "description": "Poulet mariné citron, ail, sumac, riz et grillades de légumes.", "price": 12.50, "allergens": ["milk"], "labels": [] },
+        { "id": "prod-bru-baklava",  "categoryId": "cat-bru-douceurs",  "name": "Assiette de baklavas",   "description": "Pâte filo, pistaches, sirop de fleur d'oranger.", "price": 6.50, "allergens": ["gluten", "nuts"], "labels": ["homemade"] }
+      ]
+    }
+  }
+}

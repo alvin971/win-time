@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function ownsRestaurant(rid) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/restaurants/$(rid)).data.ownerId == request.auth.uid;
+    }
+
+    // Photos restaurant — owner only en write, tout signed-in user en read
+    match /restaurants/{rid}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if ownsRestaurant(rid)
+        && request.resource.size < 5 * 1024 * 1024 // 5 MB max
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Avatars users
+    match /users/{uid}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.size < 2 * 1024 * 1024 // 2 MB max
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
