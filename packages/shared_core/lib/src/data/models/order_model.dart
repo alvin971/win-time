@@ -81,14 +81,18 @@ class OrderModel {
     if (raw is! Map) return null;
     return CustomerInfo(
       name: (raw['name'] as String?) ?? '',
-      phoneNumber: (raw['phoneNumber'] as String?) ?? '',
+      // Lecture défensive : snake_case (canonique) puis camelCase (legacy).
+      phoneNumber:
+          (raw['phone_number'] ?? raw['phoneNumber'] ?? '').toString(),
       email: raw['email'] as String?,
     );
   }
 
   static Map<String, dynamic> _customerInfoToMap(CustomerInfo c) => {
+        // Snake_case canonique (lu par Pro OrderModel.fromJson en priorité,
+        // avec fallback camelCase pour les orders pré-fix).
         'name': c.name,
-        'phoneNumber': c.phoneNumber,
+        'phone_number': c.phoneNumber,
         'email': c.email,
       };
 
@@ -104,33 +108,41 @@ class OrderModel {
         totalPrice: 0,
       );
     }
+    // Lecture défensive : snake_case (canonique) puis camelCase (legacy).
+    String pick(String snake, String camel) =>
+        ((raw[snake] ?? raw[camel]) ?? '').toString();
+    String? pickN(String snake, String camel) =>
+        (raw[snake] ?? raw[camel]) as String?;
     return OrderItemEntity(
       id: (raw['id'] as String?) ?? '',
-      productId: (raw['productId'] as String?) ?? '',
-      productName: (raw['productName'] as String?) ?? '',
-      productImageUrl: raw['productImageUrl'] as String?,
+      productId: pick('product_id', 'productId'),
+      productName: pick('product_name', 'productName'),
+      productImageUrl: pickN('product_image_url', 'productImageUrl'),
       quantity: asInt(raw['quantity']) ?? 1,
-      unitPrice: asDouble(raw['unitPrice']) ?? 0.0,
-      totalPrice: asDouble(raw['totalPrice']) ?? 0.0,
-      selectedSize: raw['selectedSize'] as String?,
-      selectedOptions: asList<String>(raw['selectedOptions']),
+      unitPrice: asDouble(raw['unit_price'] ?? raw['unitPrice']) ?? 0.0,
+      totalPrice: asDouble(raw['total_price'] ?? raw['totalPrice']) ?? 0.0,
+      selectedSize: pickN('selected_size', 'selectedSize'),
+      selectedOptions:
+          asList<String>(raw['selected_options'] ?? raw['selectedOptions']),
       modifications: asList<String>(raw['modifications']),
-      specialInstructions: raw['specialInstructions'] as String?,
+      specialInstructions:
+          pickN('special_instructions', 'specialInstructions'),
     );
   }
 
   static Map<String, dynamic> _itemToMap(OrderItemEntity i) => {
+        // Snake_case canonique (cf. _customerInfoToMap).
         'id': i.id,
-        'productId': i.productId,
-        'productName': i.productName,
-        'productImageUrl': i.productImageUrl,
+        'product_id': i.productId,
+        'product_name': i.productName,
+        'product_image_url': i.productImageUrl,
         'quantity': i.quantity,
-        'unitPrice': i.unitPrice,
-        'totalPrice': i.totalPrice,
-        'selectedSize': i.selectedSize,
-        'selectedOptions': i.selectedOptions,
+        'unit_price': i.unitPrice,
+        'total_price': i.totalPrice,
+        'selected_size': i.selectedSize,
+        'selected_options': i.selectedOptions,
         'modifications': i.modifications,
-        'specialInstructions': i.specialInstructions,
+        'special_instructions': i.specialInstructions,
       };
 
   // ─── Enums ───────────────────────────────────────────────────────────────
