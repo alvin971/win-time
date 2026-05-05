@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/cart/presentation/bloc/cart_bloc.dart';
 import '../../features/checkout/presentation/pages/checkout_page.dart';
 import '../../features/orders/presentation/pages/my_orders_page.dart';
 import '../../features/orders/presentation/pages/order_tracking_page.dart';
@@ -218,62 +220,241 @@ class _HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex(context),
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              context.go(AppRoutes.restaurants);
-            case 1:
-              context.go(AppRoutes.orders);
-            case 2:
-              context.go(AppRoutes.profile);
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant),
-            label: 'Restaurants',
+    return BlocBuilder<CartBloc, CartState>(
+      builder: (context, cart) {
+        return Scaffold(
+          body: child,
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex(context),
+            onTap: (index) {
+              switch (index) {
+                case 0:
+                  context.go(AppRoutes.restaurants);
+                case 1:
+                  context.go(AppRoutes.orders);
+                case 2:
+                  context.go(AppRoutes.profile);
+              }
+            },
+            items: [
+              BottomNavigationBarItem(
+                icon: cart.itemCount > 0
+                    ? _BadgeIcon(
+                        icon: const Icon(Icons.restaurant),
+                        count: cart.itemCount,
+                      )
+                    : const Icon(Icons.restaurant),
+                label: 'Restaurants',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_bag),
+                label: 'Commandes',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profil',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag),
-            label: 'Commandes',
+        );
+      },
+    );
+  }
+}
+
+class _BadgeIcon extends StatelessWidget {
+  final Icon icon;
+  final int count;
+  const _BadgeIcon({required this.icon, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          right: -8,
+          top: -4,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+            child: Text(
+              count > 9 ? '9+' : '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Profile tab — minimal pour ce checkpoint (email + sign out).
+// Profile tab — éditable (nom, téléphone, email read-only) + sign out.
 // ---------------------------------------------------------------------------
 
-class _ProfileTab extends StatelessWidget {
+class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
+
+  @override
+  State<_ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<_ProfileTab> {
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  bool _loading = true;
+  bool _saving = false;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final row = await Supabase.instance.client
+          .schema('wintime')
+          .from('user_profiles')
+          .select()
+          .eq('id', uid)
+          .maybeSingle();
+      if (!mounted) return;
+      _firstNameCtrl.text = (row?['first_name'] as String?) ?? '';
+      _lastNameCtrl.text = (row?['last_name'] as String?) ?? '';
+      _phoneCtrl.text = (row?['phone_number'] as String?) ?? '';
+      setState(() => _loading = false);
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return;
+    setState(() => _saving = true);
+    try {
+      await Supabase.instance.client
+          .schema('wintime')
+          .from('user_profiles')
+          .update({
+            'first_name': _firstNameCtrl.text.trim(),
+            'last_name': _lastNameCtrl.text.trim(),
+            'phone_number': _phoneCtrl.text.trim().isEmpty
+                ? null
+                : _phoneCtrl.text.trim(),
+          })
+          .eq('id', uid);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil mis à jour')),
+      );
+      setState(() => _dirty = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profil')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
-      body: ListView(
+      body: Form(
+        key: _formKey,
+        onChanged: () => setState(() => _dirty = true),
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Card(
             child: ListTile(
               leading: const Icon(Icons.person, size: 40, color: Colors.orange),
               title: Text(user?.email ?? 'Non connecté'),
-              subtitle: Text(user?.id ?? '—',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              subtitle: const Text('Email non modifiable',
+                  style: TextStyle(fontSize: 11, color: Colors.grey)),
             ),
           ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _firstNameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Prénom',
+              prefixIcon: Icon(Icons.badge_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _lastNameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Nom',
+              prefixIcon: Icon(Icons.badge),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Téléphone (optionnel)',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: (_saving || !_dirty) ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.save),
+            label: const Text('Enregistrer'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () async {
@@ -289,6 +470,7 @@ class _ProfileTab extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

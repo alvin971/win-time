@@ -66,6 +66,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               SliverAppBar(
                 expandedHeight: 220,
                 pinned: true,
+                leading: const BackButton(),
                 title: Text(r.name),
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(

@@ -25,6 +25,7 @@ class RestaurantsListPage extends StatefulWidget {
 class _RestaurantsListPageState extends State<RestaurantsListPage> {
   late final SupabaseRestaurantsDataSource _dataSource;
   final _locationService = LocationService();
+  final _searchCtrl = TextEditingController();
 
   bool _loading = true;
   String? _error;
@@ -32,11 +33,61 @@ class _RestaurantsListPageState extends State<RestaurantsListPage> {
   List<RestaurantEntity>? _allRestaurants;
   Position? _position;
 
+  // ─── Filtres UI ─────────────────────────────────────────────────────────
+  String _query = '';
+  final Set<CuisineType> _selectedCuisines = {};
+  final Set<PriceRange> _selectedPriceRanges = {};
+  bool _onlyOpenNow = false;
+
+  bool get _hasFilters =>
+      _selectedCuisines.isNotEmpty ||
+      _selectedPriceRanges.isNotEmpty ||
+      _onlyOpenNow ||
+      _query.isNotEmpty;
+
+  /// Applique tous les filtres + recherche en mémoire.
+  bool _matches(RestaurantEntity r) {
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      final hit = r.name.toLowerCase().contains(q) ||
+          r.cuisineType.displayName.toLowerCase().contains(q) ||
+          r.address.city.toLowerCase().contains(q) ||
+          (r.slogan ?? '').toLowerCase().contains(q);
+      if (!hit) return false;
+    }
+    if (_selectedCuisines.isNotEmpty &&
+        !_selectedCuisines.contains(r.cuisineType)) {
+      return false;
+    }
+    if (_selectedPriceRanges.isNotEmpty &&
+        !_selectedPriceRanges.contains(r.priceRange)) {
+      return false;
+    }
+    if (_onlyOpenNow && !r.isOpenForOrders) return false;
+    return true;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedCuisines.clear();
+      _selectedPriceRanges.clear();
+      _onlyOpenNow = false;
+      _query = '';
+      _searchCtrl.clear();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _dataSource = SupabaseRestaurantsDataSource(Supabase.instance.client);
     _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -117,46 +168,64 @@ class _RestaurantsListPageState extends State<RestaurantsListPage> {
       );
     }
 
+    // Construit la liste filtrée
     final cards = <Widget>[];
+    cards.add(_buildSearchAndFilters());
+
+    int matched = 0;
     if (_withDistance != null) {
+      final filtered = _withDistance!
+          .where((r) => _matches(r.restaurant))
+          .toList();
+      matched = filtered.length;
       cards.add(_HeaderText(
         text: _position == null
-            ? 'Restaurants à proximité'
-            : '${_withDistance!.length} restaurant${_withDistance!.length > 1 ? "s" : ""} dans un rayon de 15 km',
+            ? 'Restaurants à proximité ($matched)'
+            : '$matched restaurant${matched > 1 ? "s" : ""} dans un rayon de 15 km',
       ));
-      for (final r in _withDistance!) {
+      for (final r in filtered) {
         cards.add(_RestaurantCard(
           restaurant: r.restaurant,
           distanceLabel: r.formattedDistance,
         ));
       }
     } else if (_allRestaurants != null) {
-      cards.add(const _HeaderText(
-        text: 'Géolocalisation indisponible — affichage de tous les restaurants',
+      final filtered = _allRestaurants!.where(_matches).toList();
+      matched = filtered.length;
+      cards.add(_HeaderText(
+        text: 'Géolocalisation indisponible — $matched restaurant${matched > 1 ? "s" : ""}',
       ));
-      for (final r in _allRestaurants!) {
+      for (final r in filtered) {
         cards.add(_RestaurantCard(restaurant: r));
       }
     }
 
-    if (cards.length == 1) {
-      // Pas de restos
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+    if (matched == 0) {
+      cards.add(Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.no_food, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
+              Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 12),
               Text(
-                'Aucun restaurant trouvé.',
-                style: Theme.of(context).textTheme.titleMedium,
+                _hasFilters
+                    ? 'Aucun restaurant ne correspond aux filtres.'
+                    : 'Aucun restaurant trouvé.',
+                style: Theme.of(context).textTheme.titleSmall,
               ),
+              if (_hasFilters) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _clearFilters,
+                  icon: const Icon(Icons.clear),
+                  label: const Text('Effacer les filtres'),
+                ),
+              ],
             ],
           ),
         ),
-      );
+      ));
     }
 
     return RefreshIndicator(
@@ -165,6 +234,150 @@ class _RestaurantsListPageState extends State<RestaurantsListPage> {
         padding: const EdgeInsets.all(16),
         children: cards,
       ),
+    );
+  }
+
+  /// Section search bar + chips filtres (cuisine, prix, ouvert maintenant).
+  Widget _buildSearchAndFilters() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'Rechercher (nom, cuisine, ville…)',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+            ),
+            onChanged: (v) => setState(() => _query = v.trim()),
+          ),
+          const SizedBox(height: 10),
+          // Chips filtres horizontaux
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChip(
+                  avatar: const Icon(Icons.access_time, size: 16),
+                  label: const Text('Ouvert'),
+                  selected: _onlyOpenNow,
+                  onSelected: (v) => setState(() => _onlyOpenNow = v),
+                ),
+                const SizedBox(width: 6),
+                for (final p in PriceRange.values) ...[
+                  FilterChip(
+                    label: Text(p.symbol),
+                    selected: _selectedPriceRanges.contains(p),
+                    onSelected: (v) => setState(() {
+                      v ? _selectedPriceRanges.add(p) : _selectedPriceRanges.remove(p);
+                    }),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                const SizedBox(width: 4),
+                _CuisineMultiChip(
+                  selected: _selectedCuisines,
+                  onChanged: (s) => setState(() {
+                    _selectedCuisines
+                      ..clear()
+                      ..addAll(s);
+                  }),
+                ),
+                if (_hasFilters) ...[
+                  const SizedBox(width: 6),
+                  ActionChip(
+                    avatar: const Icon(Icons.clear, size: 14),
+                    label: const Text('Tout effacer'),
+                    onPressed: _clearFilters,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bouton qui ouvre une bottom sheet permettant de cocher plusieurs cuisines.
+class _CuisineMultiChip extends StatelessWidget {
+  final Set<CuisineType> selected;
+  final ValueChanged<Set<CuisineType>> onChanged;
+  const _CuisineMultiChip({required this.selected, required this.onChanged});
+
+  Future<void> _open(BuildContext context) async {
+    final temp = Set<CuisineType>.from(selected);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setSheet) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Type de cuisine',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final c in CuisineType.values)
+                    FilterChip(
+                      label: Text(c.displayName),
+                      selected: temp.contains(c),
+                      onSelected: (v) => setSheet(() {
+                        v ? temp.add(c) : temp.remove(c);
+                      }),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  onChanged(temp);
+                  Navigator.pop(ctx2);
+                },
+                child: const Text('Appliquer'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelection = selected.isNotEmpty;
+    return ActionChip(
+      avatar: const Icon(Icons.local_dining, size: 16),
+      label: Text(hasSelection
+          ? 'Cuisines (${selected.length})'
+          : 'Type de cuisine'),
+      backgroundColor:
+          hasSelection ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
+      onPressed: () => _open(context),
     );
   }
 }

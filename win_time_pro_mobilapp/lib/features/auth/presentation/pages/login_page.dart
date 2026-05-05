@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/custom_text_field.dart';
@@ -38,6 +39,105 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
     }
+  }
+
+  /// Bottom sheet de réinitialisation de mot de passe via Supabase Auth.
+  /// Envoie un email avec lien de reset si le compte existe (Supabase ne
+  /// révèle pas si l'email existe ou non, pour des raisons de sécurité).
+  Future<void> _showForgotPasswordSheet(BuildContext rootContext) async {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    final formKey = GlobalKey<FormState>();
+    bool sending = false;
+
+    await showModalBottomSheet<void>(
+      context: rootContext,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Mot de passe oublié',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Entre ton email pour recevoir un lien de réinitialisation.',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    validator: (v) =>
+                        (v == null || !v.contains('@')) ? 'Email invalide' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: sending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setSheetState(() => sending = true);
+                            try {
+                              await sb.Supabase.instance.client.auth
+                                  .resetPasswordForEmail(
+                                emailCtrl.text.trim(),
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (rootContext.mounted) {
+                                ScaffoldMessenger.of(rootContext).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Si l\'email existe, un lien de réinitialisation '
+                                      'a été envoyé. Vérifie ta boîte de réception.',
+                                    ),
+                                    duration: Duration(seconds: 5),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setSheetState(() => sending = false);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(content: Text('Erreur : $e')),
+                                );
+                              }
+                            }
+                          },
+                    icon: sending
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.send),
+                    label: const Text('Envoyer le lien'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    emailCtrl.dispose();
   }
 
   @override
@@ -154,7 +254,7 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: isLoading ? null : () {},
+                        onPressed: isLoading ? null : () => _showForgotPasswordSheet(context),
                         child: Text(
                           'Mot de passe oublié ?',
                           style: TextStyle(
@@ -182,7 +282,17 @@ class _LoginPageState extends State<LoginPage> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         TextButton(
-                          onPressed: isLoading ? null : () {},
+                          onPressed: isLoading ? null : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Pour créer un compte commerçant, contacte '
+                                  'support@wintime.test ou utilise un compte démo ci-dessous.',
+                                ),
+                                duration: Duration(seconds: 5),
+                              ),
+                            );
+                          },
                           child: Text(
                             'S\'inscrire',
                             style: TextStyle(

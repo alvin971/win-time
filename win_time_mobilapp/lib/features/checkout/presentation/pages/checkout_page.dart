@@ -125,7 +125,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Validation de commande')),
+      appBar: AppBar(
+        title: const Text('Validation de commande'),
+        leading: const BackButton(),
+      ),
       body: BlocBuilder<CartBloc, CartState>(
         builder: (context, cart) {
           if (cart.isEmpty) {

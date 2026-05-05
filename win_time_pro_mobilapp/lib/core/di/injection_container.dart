@@ -11,6 +11,7 @@ import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/datasources/supabase_auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/menu/data/datasources/supabase_menu_datasource.dart';
 import '../../features/orders/data/datasources/orders_remote_datasource.dart';
 import '../../features/orders/data/datasources/supabase_orders_datasource.dart';
 import '../../features/orders/data/repositories/order_repository_impl.dart';
@@ -43,9 +44,10 @@ class ServiceLocator {
   static late OrderRepository orderRepository;
 
   // Pro-only — datasource Supabase exposé directement
-  // (pour récupérer "mon restaurant" + abonner les streams realtime).
+  // (pour récupérer "mon restaurant" + abonner les streams realtime + CRUD menu).
   static late SupabaseOrdersDataSource ordersDataSource;
   static late SupabaseRestaurantDataSource restaurantDataSource;
+  static late SupabaseMenuDataSource menuDataSource;
 
   /// Restaurant ID du commerçant connecté (set par le SplashPage/AuthBloc
   /// après login, lu par le DashboardPage). Null si user pas commerçant ou
@@ -84,6 +86,9 @@ class ServiceLocator {
 
     // ─── 5. Restaurant (Supabase, lectures + futures écritures) ───────────
     restaurantDataSource = SupabaseRestaurantDataSource(_supabase);
+
+    // ─── 5b. Menu (CRUD catégories + produits + photos) ───────────────────
+    menuDataSource = SupabaseMenuDataSource(_supabase);
 
     // ─── 6. NotificationService (lazy Firebase, ne throw plus) ────────────
     _notificationService = NotificationService();

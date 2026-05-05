@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/pages/splash_page.dart';
+import '../../../menu/presentation/pages/menu_page.dart';
 import '../../../profile/presentation/pages/my_restaurant_page.dart';
 import '../../domain/entities/order_entity.dart' as domain;
 
@@ -236,6 +237,12 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _openMyMenu() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const MenuPage()),
+    );
+  }
+
   Future<void> _openMyRestaurant({bool createMode = false}) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -369,7 +376,39 @@ class _DashboardPageState extends State<DashboardPage> {
     final inProgress = _getByStatus(_OrderStatus.inProgress);
     final ready = _getByStatus(_OrderStatus.ready);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Quitter Win Time Pro ?'),
+            content: const Text(
+                'Tu vas fermer l\'application. Tu pourras la rouvrir à tout moment.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Annuler'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red, foregroundColor: Colors.white),
+                child: const Text('Quitter'),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true && mounted) {
+          // Sortie propre : Navigator.maybePop n'est pas pertinent ici car on
+          // est sur la page racine. On pop la stack au cas où il y aurait
+          // un parent (auquel cas didPop aurait été true), sinon on laisse
+          // l'OS gérer.
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Win Time Pro'),
         centerTitle: true,
@@ -386,6 +425,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 case 'restaurant':
                   _openMyRestaurant();
                   break;
+                case 'menu':
+                  _openMyMenu();
+                  break;
                 case 'logout':
                   _signOut();
                   break;
@@ -397,6 +439,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: ListTile(
                   leading: Icon(Icons.storefront),
                   title: Text('Mon Restaurant'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'menu',
+                child: ListTile(
+                  leading: Icon(Icons.menu_book),
+                  title: Text('Mon Menu'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -455,6 +505,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
