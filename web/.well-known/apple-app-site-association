@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "REPLACE_TEAMID.com.wintime.app",
+          "REPLACE_TEAMID.com.wintime.pro"
+        ],
+        "components": [
+          { "/": "/r/*",  "comment": "Restaurant detail page" },
+          { "/": "/o/*",  "comment": "Order tracking" }
+        ]
+      }
+    ]
+  }
+}
