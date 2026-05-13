@@ -63,5 +63,22 @@
 	<string>Win Time Pro peut accéder à vos contacts pour gérer votre carnet d'adresses professionnel.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Win Time Pro utilise Face ID pour sécuriser l'accès à votre compte professionnel.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>audio</string>
+	</array>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>fr</string>
+		<string>en</string>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>mailto</string>
+		<string>sms</string>
+		<string>https</string>
+	</array>
 </dict>
 </plist>
