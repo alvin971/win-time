@@ -1,5 +1,6 @@
-import 'package:geolocator/geolocator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:injectable/injectable.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -24,7 +25,7 @@ class LocationService {
       );
       return position;
     } catch (e) {
-      print('Erreur lors de la récupération de la position: $e');
+      debugPrint('Erreur lors de la récupération de la position: $e');
       return null;
     }
   }
@@ -45,7 +46,11 @@ class LocationService {
         1000; // Conversion en kilomètres
   }
 
-  /// Récupère l'adresse à partir de coordonnées
+  /// Récupère l'adresse à partir de coordonnées.
+  ///
+  /// Null-safe interpolation: street/postal/locality can each be null, and we
+  /// strip the resulting empty separators so the user never sees
+  /// "null, 75000 null".
   Future<String?> getAddressFromCoordinates({
     required double latitude,
     required double longitude,
@@ -55,9 +60,17 @@ class LocationService {
       if (placemarks.isEmpty) return null;
 
       final place = placemarks.first;
-      return '${place.street}, ${place.postalCode} ${place.locality}';
+      final street = (place.street ?? '').trim();
+      final postal = (place.postalCode ?? '').trim();
+      final locality = (place.locality ?? '').trim();
+      final parts = <String>[
+        if (street.isNotEmpty) street,
+        if (postal.isNotEmpty || locality.isNotEmpty)
+          [postal, locality].where((s) => s.isNotEmpty).join(' '),
+      ];
+      return parts.isEmpty ? null : parts.join(', ');
     } catch (e) {
-      print('Erreur lors de la récupération de l\'adresse: $e');
+      debugPrint("Erreur lors de la récupération de l'adresse: $e");
       return null;
     }
   }
@@ -70,7 +83,7 @@ class LocationService {
 
       return locations.first;
     } catch (e) {
-      print('Erreur lors de la récupération des coordonnées: $e');
+      debugPrint('Erreur lors de la récupération des coordonnées: $e');
       return null;
     }
   }

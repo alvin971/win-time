@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../core/config/legal_urls.dart';
+import '../../../../core/config/wintime_supabase_config.dart';
 import '../../../../core/theme/app_theme.dart';
 
+/// Registration page for the customer (Client) app.
+///
+/// Calls Supabase Auth directly, consistent with `login_page.dart`. After
+/// `auth.signUp` succeeds, we upsert a row in `wintime.user_profiles` with
+/// role='client'. RLS allows this because `auth.uid()` is now set and the
+/// `user_profiles_self_insert WITH CHECK (auth.uid() = id)` policy passes.
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -38,7 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Veuillez accepter les conditions d\'utilisation'),
+          content: Text("Veuillez accepter les conditions d'utilisation"),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -47,23 +58,108 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    // Simulation d'appel API
-    await Future.delayed(const Duration(seconds: 2));
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final phone = _phoneController.text.trim();
 
-    if (mounted) {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // 1. Auth.signUp creates the auth.users row (Supabase may also send a
+      //    confirmation email depending on project settings).
+      final res = await supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'first_name': firstName,
+          'last_name': lastName,
+          'phone_number': phone,
+          'app': 'wintime',
+        },
+      );
+
+      final user = res.user;
+      if (user == null) {
+        throw const AuthException('Inscription échouée — réponse vide');
+      }
+
+      // 2. Create the matching wintime.user_profiles row. We use upsert so
+      //    a duplicate signup (after email confirm bounce) is idempotent.
+      //    Role is fixed to 'client'; restaurateurs sign up via the Pro app.
+      await supabase
+          .schema(WintimeSupabaseConfig.schema)
+          .from('user_profiles')
+          .upsert({
+        'id': user.id,
+        'email': email,
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone_number': phone.isEmpty ? null : phone,
+        'role': 'client',
+        'is_active': true,
+        'is_email_verified': user.emailConfirmedAt != null,
+      });
+
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
+      // 3. Tell the user what happens next. If the project requires email
+      //    confirmation, the session is null and they need to confirm before
+      //    they can log in; otherwise they have a live session.
+      final hasLiveSession = res.session != null;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Compte créé avec succès !'),
+        SnackBar(
+          content: Text(
+            hasLiveSession
+                ? 'Compte créé ! Vous pouvez vous connecter.'
+                : 'Compte créé. Vérifiez votre email pour confirmer.',
+          ),
           backgroundColor: AppTheme.successColor,
+          duration: const Duration(seconds: 5),
         ),
       );
 
-      // Retour à la page de connexion
+      // Return to login.
       Navigator.of(context).pop();
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Inscription échouée : ${e.message}'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
+
+  /// Open a legal page in the system browser. Silently no-ops if no app
+  /// can handle https URLs (effectively never, but defensive).
+  Future<void> _openLegalUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible d\'ouvrir : $url')),
+      );
+    }
+  }
+
+  // RFC-5322-ish enough for a French phone-app signup field.
+  // Rejects empty, whitespace-only, missing @, missing TLD.
+  static final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +175,6 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Prénom
                 TextFormField(
                   controller: _firstNameController,
                   textCapitalization: TextCapitalization.words,
@@ -88,16 +183,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     prefixIcon: Icon(Icons.person_outlined),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Veuillez entrer votre prénom';
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
-                // Nom
                 TextFormField(
                   controller: _lastNameController,
                   textCapitalization: TextCapitalization.words,
@@ -106,16 +198,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     prefixIcon: Icon(Icons.person_outlined),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Veuillez entrer votre nom';
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
-                // Email
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -125,19 +214,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Veuillez entrer votre email';
                     }
-                    if (!value.contains('@')) {
+                    if (!_emailRe.hasMatch(value.trim())) {
                       return 'Email invalide';
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
-                // Téléphone
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
@@ -147,16 +233,16 @@ class _RegisterPageState extends State<RegisterPage> {
                     prefixIcon: Icon(Icons.phone_outlined),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Veuillez entrer votre numéro de téléphone';
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Veuillez entrer votre numéro';
                     }
+                    // Soft check: at least 8 digits total.
+                    final digits = value.replaceAll(RegExp(r'\D'), '');
+                    if (digits.length < 8) return 'Numéro trop court';
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
-                // Mot de passe
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -165,6 +251,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
+                      tooltip: _obscurePassword ? 'Afficher' : 'Masquer',
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility_outlined
@@ -180,15 +267,12 @@ class _RegisterPageState extends State<RegisterPage> {
                       return 'Veuillez entrer un mot de passe';
                     }
                     if (value.length < 8) {
-                      return 'Le mot de passe doit contenir au moins 8 caractères';
+                      return 'Au moins 8 caractères';
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
-                // Confirmation mot de passe
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
@@ -197,6 +281,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     hintText: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
+                      tooltip:
+                          _obscureConfirmPassword ? 'Afficher' : 'Masquer',
                       icon: Icon(
                         _obscureConfirmPassword
                             ? Icons.visibility_outlined
@@ -204,7 +290,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       onPressed: () {
                         setState(
-                          () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                          () => _obscureConfirmPassword =
+                              !_obscureConfirmPassword,
                         );
                       },
                     ),
@@ -219,10 +306,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 24),
-
-                // Conditions d'utilisation
                 Row(
                   children: [
                     Checkbox(
@@ -232,44 +316,58 @@ class _RegisterPageState extends State<RegisterPage> {
                       },
                     ),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() => _acceptTerms = !_acceptTerms);
-                        },
-                        child: RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text(
+                            "J'accepte les ",
+                            style: TextStyle(
                               color: AppTheme.textPrimary,
                               fontSize: 14,
                             ),
-                            children: [
-                              const TextSpan(text: 'J\'accepte les '),
-                              TextSpan(
-                                text: 'conditions d\'utilisation',
-                                style: TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              const TextSpan(text: ' et la '),
-                              TextSpan(
-                                text: 'politique de confidentialité',
-                                style: TextStyle(
-                                  color: AppTheme.primaryColor,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ],
                           ),
-                        ),
+                          GestureDetector(
+                            onTap: () => _openLegalUrl(LegalUrls.terms),
+                            child: Text(
+                              "conditions d'utilisation",
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                decoration: TextDecoration.underline,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const Text(
+                            ' et la ',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => _openLegalUrl(LegalUrls.privacy),
+                            child: Text(
+                              'politique de confidentialité',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                decoration: TextDecoration.underline,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const Text(
+                            '.',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
-
-                // Bouton d'inscription
                 ElevatedButton(
                   onPressed: _isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
@@ -283,7 +381,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
@@ -291,10 +390,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           style: TextStyle(fontSize: 16),
                         ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Retour connexion
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
