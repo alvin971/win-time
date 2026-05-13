@@ -1,8 +1,16 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_core/shared_core.dart';
 
-/// Cart bloc — état local uniquement (pas persisté en Postgres).
+import '../../data/cart_persistence.dart';
+
+/// Cart bloc — état local. Auto-persisté côté device via [CartPersistence]
+/// (SharedPreferences) à chaque émission, TTL 8h. Permet de retrouver son
+/// panier après un crash ou un kill système. Audit S2.2.15.
+/// Restauration : utiliser [restoreFromPersistence] depuis le shell après
+/// que ProductRepository soit disponible (Sprint 1 follow-up).
 /// Un cart est lié à UN restaurant : changer de resto vide le cart
 /// (avec confirmation côté UI).
 
@@ -89,7 +97,25 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemAdded>(_onAdd);
     on<CartItemRemoved>(_onRemove);
     on<CartItemQuantityChanged>(_onQty);
-    on<CartCleared>((_, emit) => emit(CartState.empty()));
+    on<CartCleared>((_, emit) {
+      emit(CartState.empty());
+      _persist(CartState.empty());
+    });
+  }
+
+  /// Persist a snapshot to local storage. Fire-and-forget; failures are
+  /// logged inside CartPersistence and never propagated to the UI.
+  Future<void> _persist(CartState s) async {
+    if (s.isEmpty) {
+      await CartPersistence.clear();
+      return;
+    }
+    await CartPersistence.save(
+      restaurantId: s.restaurantId,
+      lines: s.lines
+          .map((l) => (productId: l.product.id, quantity: l.quantity))
+          .toList(),
+    );
   }
 
   void _onAdd(CartItemAdded event, Emitter<CartState> emit) {
@@ -112,17 +138,17 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     } else {
       lines.add(CartLine(product: event.product, quantity: event.quantity));
     }
-    emit(state.copyWith(restaurantId: event.restaurantId, lines: lines));
+    final next = state.copyWith(restaurantId: event.restaurantId, lines: lines);
+    emit(next);
+    _persist(next);
   }
 
   void _onRemove(CartItemRemoved event, Emitter<CartState> emit) {
     final lines =
         state.lines.where((l) => l.product.id != event.productId).toList();
-    if (lines.isEmpty) {
-      emit(CartState.empty());
-    } else {
-      emit(state.copyWith(lines: lines));
-    }
+    final next = lines.isEmpty ? CartState.empty() : state.copyWith(lines: lines);
+    emit(next);
+    _persist(next);
   }
 
   void _onQty(CartItemQuantityChanged event, Emitter<CartState> emit) {
@@ -135,6 +161,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
             ? l.copyWith(quantity: event.newQuantity)
             : l)
         .toList();
-    emit(state.copyWith(lines: lines));
+    final next = state.copyWith(lines: lines);
+    emit(next);
+    _persist(next);
   }
 }

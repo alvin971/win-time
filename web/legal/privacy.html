@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Politique de confidentialité Win Time — Click & Collect pour restaurants.">
+<title>Politique de confidentialité — Win Time</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1.5rem; line-height: 1.6; color: #1a1a1a; }
+  h1 { font-size: 1.75rem; }
+  h2 { margin-top: 2rem; font-size: 1.25rem; }
+  p, li { font-size: 1rem; }
+  .meta { color: #666; font-size: 0.85rem; margin-top: 0.25rem; }
+  a { color: #FF6B35; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 0.85rem; color: #666; }
+</style>
+</head>
+<body>
+<h1>Politique de confidentialité</h1>
+<p class="meta">Dernière mise à jour : 13 mai 2026 · Version 1.0</p>
+
+<p>
+La présente politique vous informe (article 13 du RGPD) sur la manière dont
+<strong>Win Time</strong> (« nous ») collecte, utilise et protège vos données
+personnelles lorsque vous utilisez l'application mobile cliente ou
+l'application Pro pour restaurateurs.
+</p>
+
+<h2>1. Responsable du traitement</h2>
+<p>
+<!-- TODO Alvin : remplir avec la dénomination sociale exacte, le SIREN/SIRET,
+     l'adresse postale et l'adresse email du DPO si désigné. -->
+Win Time — [À COMPLÉTER : raison sociale, SIREN, adresse], France.<br>
+Contact privacy / DPO : <a href="mailto:support@wintime.fr">support@wintime.fr</a>
+</p>
+
+<h2>2. Données collectées</h2>
+<ul>
+  <li><strong>Identifiants de compte</strong> : email, mot de passe (hashé côté Supabase Auth, jamais stocké en clair), prénom, nom, numéro de téléphone.</li>
+  <li><strong>Localisation précise</strong> : uniquement quand vous demandez la liste des restaurants proches. Aucune localisation en arrière-plan.</li>
+  <li><strong>Historique de commandes</strong> : produits commandés, montants, statuts, horodatages, restaurant. Conservé pour vous permettre de revoir vos commandes et pour les obligations comptables du restaurant (Code de commerce L123-22 : 10 ans).</li>
+  <li><strong>Données techniques</strong> : identifiants de session, token de notification push (FCM), rapports de crash anonymisés (Sentry). Aucune donnée de tracking publicitaire.</li>
+  <li><strong>Photos</strong> (côté Pro uniquement) : images de produits que vous téléversez volontairement pour votre menu. Stockées publiquement dans notre bucket Supabase Storage.</li>
+</ul>
+
+<h2>3. Finalités et bases légales</h2>
+<table>
+  <thead><tr><th>Donnée</th><th>Finalité</th><th>Base légale (RGPD art. 6)</th></tr></thead>
+  <tbody>
+    <tr><td>Identifiants</td><td>Exécution du contrat de service (commander chez un restaurant)</td><td>Contrat — 6.1.b</td></tr>
+    <tr><td>Localisation</td><td>Trouver les restaurants à proximité</td><td>Consentement — 6.1.a</td></tr>
+    <tr><td>Commandes</td><td>Service rendu + obligations comptables</td><td>Contrat + obligation légale — 6.1.b et 6.1.c</td></tr>
+    <tr><td>FCM token</td><td>Notifications de commande</td><td>Intérêt légitime — 6.1.f</td></tr>
+    <tr><td>Sentry (crash data)</td><td>Stabilité technique</td><td>Intérêt légitime — 6.1.f</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Destinataires</h2>
+<ul>
+  <li><strong>Le restaurateur</strong> auprès duquel vous commandez (votre nom, téléphone, contenu et instructions de votre commande).</li>
+  <li><strong>Supabase</strong> (sous-traitant — base de données et authentification, hébergement Europe).</li>
+  <li><strong>Stripe</strong> (sous-traitant — paiement), une fois le paiement en ligne activé.</li>
+  <li><strong>Sentry</strong> (sous-traitant — supervision technique, données anonymisées).</li>
+  <li><strong>Apple / Google</strong> (FCM, badges de notification) au strict nécessaire pour livrer une notification push.</li>
+</ul>
+
+<h2>5. Durée de conservation</h2>
+<ul>
+  <li>Compte actif : tant que vous gardez votre compte.</li>
+  <li>Compte supprimé : les commandes historiques sont anonymisées (nom, email, téléphone effacés) mais conservées 10 ans pour les obligations comptables du restaurateur (Code de commerce L123-22).</li>
+  <li>Logs de connexion : 12 mois maximum (recommandation CNIL).</li>
+  <li>Données de paiement (Stripe) : 15 mois pour la lutte anti-fraude (CNIL).</li>
+</ul>
+
+<h2>6. Vos droits (RGPD articles 15 à 22)</h2>
+<ul>
+  <li><strong>Accès</strong> et <strong>portabilité</strong> : exporter vos données depuis votre profil dans l'app, ou par email à <a href="mailto:support@wintime.fr">support@wintime.fr</a>.</li>
+  <li><strong>Rectification</strong> : modifier votre profil dans l'app.</li>
+  <li><strong>Effacement</strong> : bouton « Supprimer mon compte » dans Profil → Confidentialité. L'anonymisation est immédiate ; les commandes historiques sont conservées sans PII pour respecter les obligations comptables.</li>
+  <li><strong>Opposition</strong> au traitement fondé sur l'intérêt légitime (notifications, Sentry) : depuis les paramètres.</li>
+  <li><strong>Limitation</strong> du traitement : sur demande à <a href="mailto:support@wintime.fr">support@wintime.fr</a>.</li>
+  <li><strong>Réclamation</strong> auprès de la CNIL : <a href="https://www.cnil.fr/fr/plaintes">www.cnil.fr/plaintes</a>.</li>
+</ul>
+
+<h2>7. Cookies (web)</h2>
+<p>
+Les versions web des applications utilisent uniquement des cookies techniques
+strictement nécessaires (session Supabase Auth). Aucun cookie de mesure
+d'audience ou publicitaire n'est déposé sans votre consentement préalable.
+</p>
+
+<h2>8. Transferts hors UE</h2>
+<p>
+Vos données restent dans l'Union européenne. Si Sentry ou Stripe doit faire
+transiter des données via les États-Unis, ces transferts sont encadrés par
+les Clauses Contractuelles Types de la Commission européenne.
+</p>
+
+<h2>9. Mise à jour de la politique</h2>
+<p>
+Toute modification substantielle vous sera notifiée par email et dans l'app
+au moins 30 jours avant son entrée en vigueur.
+</p>
+
+<footer>
+Pour toute question : <a href="mailto:support@wintime.fr">support@wintime.fr</a>
+· <a href="/legal/mentions-legales.html">Mentions légales</a>
+· <a href="/legal/cgv.html">CGV</a>
+· <a href="/legal/cookies.html">Cookies</a>
+</footer>
+</body>
+</html>

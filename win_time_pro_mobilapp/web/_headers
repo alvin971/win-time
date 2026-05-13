@@ -1,0 +1,26 @@
+# Cloudflare Pages headers for win-time Pro web app.
+# Same defense-in-depth as the Client app; Pro doesn't need Stripe iframe scope.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://supabase.0for0.com wss://*.supabase.co wss://supabase.0for0.com https://*.googleapis.com https://fcm.googleapis.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/canvaskit/*
+  Cache-Control: public, max-age=31536000, immutable
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/flutter_bootstrap.js
+  Cache-Control: public, max-age=0, must-revalidate
+/flutter_service_worker.js
+  Cache-Control: public, max-age=0, must-revalidate

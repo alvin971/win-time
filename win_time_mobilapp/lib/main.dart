@@ -11,6 +11,7 @@ import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
+import 'features/checkout/data/stripe_payment_service.dart';
 
 void main() {
   // Garde-fou anti-écran-blanc : tout crash async non capturé est loggé
@@ -78,6 +79,14 @@ void main() {
       await configureDependencies().timeout(const Duration(seconds: 15));
     } catch (e, st) {
       debugPrint('⚠️ configureDependencies failed/timed-out: $e\n$st');
+    }
+
+    // Stripe (optionnel). No-ops if STRIPE_PUBLISHABLE_KEY is empty.
+    try {
+      await StripePaymentService.ensureInitialized()
+          .timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('⚠️ Stripe init failed/timed-out: $e');
     }
 
     runApp(const WinTimeApp());

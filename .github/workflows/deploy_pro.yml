@@ -39,6 +39,8 @@ jobs:
         working-directory: win_time_pro_mobilapp
         run: |
           flutter build web --release \
+            --tree-shake-icons \
+            --no-source-maps \
             --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }} \
             --dart-define=WS_BASE_URL=${{ secrets.WS_BASE_URL }}
 
@@ -50,7 +52,7 @@ jobs:
           command: pages deploy win_time_pro_mobilapp/build/web --project-name=win-time-pro --branch=main
 
   build_android:
-    name: Build Pro Android APK
+    name: Build Pro Android App Bundle
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -81,17 +83,25 @@ jobs:
         working-directory: win_time_pro_mobilapp
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build APK (release)
+      # Play Store requires App Bundle since Aug 2021. See audit S12.3.6.
+      - name: Build App Bundle (release)
         working-directory: win_time_pro_mobilapp
         run: |
-          flutter build apk --release \
+          flutter build appbundle --release \
             --obfuscate \
             --split-debug-info=build/debug-info \
             --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }} \
             --dart-define=WS_BASE_URL=${{ secrets.WS_BASE_URL }}
 
-      - name: Upload APK artifact
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: win-time-pro-apk
-          path: win_time_pro_mobilapp/build/app/outputs/flutter-apk/app-release.apk
+          name: win-time-pro-aab
+          path: win_time_pro_mobilapp/build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-time-pro-debug-info
+          path: win_time_pro_mobilapp/build/debug-info/
+          if-no-files-found: ignore

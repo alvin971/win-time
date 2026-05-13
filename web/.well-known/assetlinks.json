@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.wintime.app",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_RELEASE_KEYSTORE_SHA256_FINGERPRINT"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.wintimepro.win_time_pro",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_PRO_RELEASE_KEYSTORE_SHA256_FINGERPRINT"
+      ]
+    }
+  }
+]

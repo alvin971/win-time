@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,6 +51,110 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Send a Supabase password-reset email. Supabase does not reveal whether
+  /// the email is registered (security), so the snackbar is intentionally
+  /// non-committal.
+  Future<void> _forgotPassword() async {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    final formKey = GlobalKey<FormState>();
+    var sending = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Mot de passe oublié',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Entre ton email pour recevoir un lien de réinitialisation.',
+                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    validator: (v) {
+                      final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
+                      return (v == null || !re.hasMatch(v.trim()))
+                          ? 'Email invalide'
+                          : null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: sending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setSheetState(() => sending = true);
+                            try {
+                              await Supabase.instance.client.auth
+                                  .resetPasswordForEmail(
+                                emailCtrl.text.trim(),
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Si l'email est enregistré, un lien a été envoyé. Vérifie ta boîte de réception.",
+                                    ),
+                                    duration: Duration(seconds: 5),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setSheetState(() => sending = false);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(content: Text('Erreur : $e')),
+                                );
+                              }
+                            }
+                          },
+                    icon: sending
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send),
+                    label: const Text('Envoyer le lien'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    emailCtrl.dispose();
   }
 
   Future<void> _loginAsDemoCustomer() async {
@@ -135,10 +240,11 @@ class _LoginPageState extends State<LoginPage> {
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Veuillez entrer votre email';
                     }
-                    if (!value.contains('@')) {
+                    final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
+                    if (!re.hasMatch(value.trim())) {
                       return 'Email invalide';
                     }
                     return null;
@@ -183,14 +289,7 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: Implémenter mot de passe oublié
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fonctionnalité à venir'),
-                        ),
-                      );
-                    },
+                    onPressed: _isLoading ? null : _forgotPassword,
                     child: const Text('Mot de passe oublié ?'),
                   ),
                 ),
@@ -264,50 +363,52 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 24),
 
-                // 🧪 TEST — bouton démo customer (à retirer avant release)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.08),
-                    border: Border.all(color: Colors.amber, width: 1.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.science_outlined,
-                              size: 18, color: Colors.brown),
-                          SizedBox(width: 6),
-                          Text(
-                            'TEST — Connexion rapide démo',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown,
+                // 🧪 Demo login — DEBUG BUILDS ONLY. Compiled out in release
+                // bundles so App Store reviewers never see it. Audit S2.2.3.
+                if (kDebugMode) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.08),
+                      border: Border.all(color: Colors.amber, width: 1.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.science_outlined,
+                                size: 18, color: Colors.brown),
+                            SizedBox(width: 6),
+                            Text(
+                              'DEBUG — Connexion rapide démo',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.brown,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _loginAsDemoCustomer,
+                          icon: const Icon(Icons.person, color: Colors.blue),
+                          label: const Text('Continuer comme demo customer'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue,
+                            side: const BorderSide(color: Colors.blue),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: _isLoading ? null : _loginAsDemoCustomer,
-                        icon: const Icon(Icons.person, color: Colors.blue),
-                        label: const Text('Continuer comme demo customer'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ],
 
                 // Inscription
                 Row(

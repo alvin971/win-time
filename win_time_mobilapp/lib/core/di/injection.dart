@@ -5,7 +5,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 
-import '../config/app_config.dart';
 import '../services/websocket_service.dart';
 import 'injection.config.dart';
 
@@ -23,18 +22,26 @@ Future<void> configureDependencies() async {
   );
   getIt.registerSingleton<WebSocketService>(WebSocketService());
 
-  // ─── Dio : pré-enregistré pour OrderRemoteDataSource ──────────────────
-  // injection.config.dart (régénéré par build_runner au CI) attend
-  // `gh<Dio>()` pour construire OrderRemoteDataSourceImpl. Sans ça,
-  // getIt.init() throw `Object/factory of type Dio is not registered`
-  // et l'exception remonte jusqu'à main() → écran blanc en TestFlight.
+  // ─── DEAD Dio kept alive to satisfy the generated injection.config.dart ─
+  // The Clean-Architecture stack (AuthRepositoryImpl + AuthRemoteDataSource +
+  // OrderRemoteDataSource against api.wintime.com) is NEVER CALLED in the
+  // live app — login_page.dart talks to Supabase directly, and
+  // SupabaseOrdersDataSource handles orders. But injection.config.dart still
+  // references `gh<Dio>()` for the dead classes' constructors; removing the
+  // Dio registration here would crash `getIt.init()` and produce a white
+  // screen. The proper fix (T39) is to delete the dead source files and
+  // re-run `dart run build_runner build --delete-conflicting-outputs` to
+  // regenerate injection.config.dart without those bindings. Until then:
   if (!getIt.isRegistered<Dio>()) {
     getIt.registerSingleton<Dio>(
       Dio(
         BaseOptions(
-          baseUrl: AppConfig.apiBaseUrl,
-          connectTimeout: AppConfig.connectionTimeout,
-          receiveTimeout: AppConfig.receiveTimeout,
+          // Pointing at a deliberately-invalid host so anyone who finds this
+          // Dio being USED at runtime gets a clear network error instead of
+          // a confused timeout against a real-looking domain.
+          baseUrl: 'https://dead-api.invalid/',
+          connectTimeout: const Duration(seconds: 1),
+          receiveTimeout: const Duration(seconds: 1),
           headers: const {
             'Content-Type': 'application/json',
             'Accept': 'application/json',

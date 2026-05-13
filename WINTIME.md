@@ -1,431 +1,283 @@
 # WINTIME.md — Référence complète du projet
 
 > Fichier de référence pour toutes les sessions. Lire en premier avant toute tâche.
-> Dernière mise à jour : avril 2026
+> Dernière mise à jour : **13 mai 2026 (post-audit Sprint 0/1 — voir `WINTIME_AUDIT_REPORT.md` et `WINTIME_EXECUTION_PLAN.md`)**
+>
+> Ancienne version (avril 2026) archivée dans le git history — décrivait une
+> architecture custom REST `api.wintime.com` + Socket.IO qui n'a jamais été
+> construite. Le backend réel est Supabase auto-hosté.
 
 ---
 
 ## 1. Vue d'ensemble
 
-**Win Time** est une plateforme **Click & Collect** pour restaurants, composée de :
+**Win Time** est une plateforme **Click & Collect** pour restaurants français :
 
 | Composant | Dossier | Rôle |
 |-----------|---------|------|
-| App client | `win_time_mobilapp/` | Clients : parcourir, commander, payer |
-| App restaurateur | `win_time_pro_mobilapp/` | Resto : recevoir/gérer commandes, menu, stats |
-| Package partagé | `packages/shared_core/` | Entités, enums, erreurs, utils communs |
+| App client | `win_time_mobilapp/` | Clients : parcourir, commander, payer (Stripe), tracker pickup |
+| App restaurateur | `win_time_pro_mobilapp/` | Resto : recevoir/gérer commandes, menu, statistiques |
+| Package partagé | `packages/shared_core/` | Entités, enums, erreurs, geohash, validators |
+| Migrations DB | `migrations/*.sql` | Schéma + RLS + Storage bucket + amendments 040/050/060/070 |
+| Edge Functions | `supabase/functions/` | Stripe webhook, create-payment-intent, stripe-connect-onboard |
+| Web légal | `web/legal/` + `web/.well-known/` | Politique de confidentialité, CGV, mentions légales, Universal Links |
+| Scripts | `scripts/` | Seed Supabase, ASC tooling, backup R2 |
 
-**Backend** : API REST `https://api.wintime.com/v1` + WebSocket `wss://ws.wintime.com`
-
----
-
-## 2. Architecture de coopération (loosely coupled)
-
-```
-┌─────────────────────────────┐     ┌────────────────────────────────┐
-│   win_time_mobilapp          │     │   win_time_pro_mobilapp         │
-│   (App Client)               │     │   (App Restaurateur)            │
-│                              │     │                                 │
-│  flutter_stripe (paiement)   │     │  fl_chart / syncfusion (stats)  │
-│  google_maps (géoloc)        │     │  firebase_auth (option)         │
-│  geolocator / geocoding      │     │  flutter_secure_storage         │
-└─────────────┬────────────────┘     └────────────────┬────────────────┘
-              │                                        │
-              │         ┌──────────────────┐           │
-              └────────►│   shared_core    │◄──────────┘
-                        │  (package local) │
-                        │                 │
-                        │ UserEntity       │
-                        │ OrderEntity      │
-                        │ UserRole (enum)  │
-                        │ OrderStatus      │
-                        │ PaymentStatus    │
-                        │ PaymentMethod    │
-                        │ ApiConstants     │
-                        │ StorageKeys      │
-                        │ Failure classes  │
-                        │ ApiResult<T>     │
-                        │ WebSocketService │
-                        │ DateFormatter    │
-                        │ Validators       │
-                        └────────┬─────────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │   Backend commun         │
-                    │  REST: api.wintime.com   │
-                    │  WS:  ws.wintime.com     │
-                    └─────────────────────────┘
-```
-
-**Principe fondamental** : les 2 apps ne se parlent **jamais directement**.
-Toute coordination passe par le backend :
-- Le client passe commande → API REST → backend persiste
-- Le backend notifie le restaurant → **WebSocket** → `new_order` event
-- Le restaurant accepte → API REST → backend met à jour
-- Le backend notifie le client → **WebSocket** → `order_status_updated` event
-
-**Flux commande complet** :
-```
-Client crée commande
-    → POST /orders
-    → Backend enregistre (status: pending)
-    → WebSocket emit 'new_order' → App restaurant
-    → Restaurateur accepte
-    → POST /orders/{id}/accept (+ estimatedPreparationTime)
-    → Backend met à jour (status: accepted)
-    → WebSocket emit 'order_status_updated' → App client
-    → Restaurateur marque prête
-    → POST /orders/{id}/ready
-    → WebSocket emit 'order_ready' → App client (notification push)
-    → Client récupère → POST /orders/{id}/complete
-```
+**Backend** : **self-hosted Supabase** à `https://supabase.0for0.com`, schéma `wintime`. **Pas de custom REST** ; les apps parlent directement à Supabase (Auth, PostgREST, Storage, Realtime). Les Edge Functions ajoutent les surfaces Stripe.
 
 ---
 
-## 3. App client — `win_time_mobilapp/`
+## 2. Architecture
+
+```
+┌───────────────────────────────┐     ┌──────────────────────────────────┐
+│ win_time_mobilapp (Client)    │     │ win_time_pro_mobilapp (Pro)      │
+│                               │     │                                  │
+│ - Supabase Auth + PostgREST   │     │ - Supabase Auth + PostgREST      │
+│ - Supabase Realtime channels  │     │ - Supabase Realtime channels     │
+│ - flutter_stripe + Edge Fns   │     │ - Stripe Connect onboard         │
+│ - Sentry crash reports        │     │ - Sentry + wakelock_plus         │
+│ - geolocator (restaurants)    │     │ - image_picker (menu photos)     │
+└──────────────┬────────────────┘     └──────────────┬───────────────────┘
+               │                                     │
+               │             shared_core             │
+               │  (entities/enums/errors/geohash)    │
+               └───────────────────┬─────────────────┘
+                                   │
+              ┌────────────────────▼────────────────────┐
+              │  supabase.0for0.com — schéma `wintime`  │
+              │  ┌──────────────────────────────────┐   │
+              │  │ PostgREST + Auth + Storage +     │   │
+              │  │ Realtime + Edge Functions (Deno) │   │
+              │  └──────────────────────────────────┘   │
+              │  Tables : user_profiles, restaurants,   │
+              │  categories, products, orders,          │
+              │  restaurant_members, order_number_seq,  │
+              │  invoice_number_seq                     │
+              └─────────────────────────────────────────┘
+                                   │
+                          ┌────────▼────────┐
+                          │ Stripe (Connect) │ — paiement + payout
+                          └─────────────────┘
+```
+
+**Pas de bridge direct Client↔Pro**. Coordination via :
+- INSERT côté Client → trigger serveur valide montants/taxes → status pending
+- Pro souscrit au stream realtime `wintime.orders WHERE restaurant_id = mien`
+- Pro UPDATE status (state-machine trigger valide la transition + stamp serveur)
+- Client re-render via realtime channel
+
+---
+
+## 3. Flux commande (mis à jour, server-side)
+
+```
+[CLIENT] Cart → Checkout
+   ↓ INSERT INTO wintime.orders (items, restaurant_id, customer_info,
+                                  pickup_at, payment_method)
+   ↓ trigger orders_validate_amounts :
+       - recompute subtotal/tax/total en cents depuis wintime.products
+       - rejette si client diverge > 1 cent
+   ↓ trigger orders_fill_order_number :
+       - alloue WT-2026-000123 (séquentiel par restaurant/année)
+   ↓ trigger orders_gen_pickup_code :
+       - 6 chiffres aléatoires
+   ↓ status = pending, payment_status = pending
+   ↓
+[STRIPE, si configuré]
+   ↓ Client appelle Edge Function create-payment-intent
+   ↓ Edge Function crée PaymentIntent (avec application_fee_amount platform)
+   ↓ Client affiche PaymentSheet, Stripe traite
+   ↓
+[STRIPE → SUPABASE]
+   ↓ Webhook payment_intent.succeeded → Edge Function stripe-webhook
+   ↓ UPDATE orders SET payment_status='paid', stripe_payment_intent_id, ...
+   ↓
+[PRO] Realtime channel notifie le restaurant
+   ↓ acceptOrder → trigger enforce_order_status_transition → accepted_at = NOW()
+   ↓ markReady → status=ready, ready_at = NOW()
+   ↓
+[CLIENT] PickupCodeBanner affiche le code 6 chiffres + QR
+[PRO] Tap "Vérifier code" → PickupCodeVerifySheet
+   ↓ saisie correcte → completeOrder → trigger fill_invoice_number
+       → FAC-2026-000001 généré (séquentiel L441-9 compliant)
+   ↓ status=completed, completed_at = NOW()
+```
+
+---
+
+## 4. App client — `win_time_mobilapp/`
 
 ### Stack
-- Flutter 3.5 / Dart 3.5
-- State : `flutter_bloc ^8.1.6` + `equatable`
-- DI : `get_it ^8.0.3` + `injectable ^2.5.0`
-- Réseau : `dio ^5.7.0` + `retrofit ^4.9.0`
-- Local : `hive ^2.2.3` + `shared_preferences`
-- Paiement : `flutter_stripe ^11.2.0`
-- Maps : `google_maps_flutter ^2.10.0` + `geolocator` + `geocoding`
-- Firebase : `firebase_core` + `firebase_messaging` + `firebase_analytics`
-- Temps réel : `socket_io_client ^3.0.1`
-- Monitoring : `sentry_flutter ^8.11.0`
+- Flutter 3.32.x (CI pinning) / Dart >=3.5
+- State : `flutter_bloc 8.1.6` + `equatable`
+- DI : `get_it 8.0` + `injectable 2.5` (avec stub Dio mort kept-alive — voir audit S2.2.4, à supprimer en Sprint 2 après `build_runner` regen)
+- Routing : `go_router 14.6`
+- Backend : `supabase_flutter 2.8`
+- Réseau secondaire : `dio 5.7` (dead — pour le moment)
+- Local : `shared_preferences` + `hive` + `flutter_secure_storage`
+- Paiement : `flutter_stripe 11.2` (wiré dans `checkout_page.dart` + `StripePaymentService`)
+- Maps : `google_maps_flutter` + `geolocator` + `geocoding`
+- Push : `firebase_messaging` (lazy init)
+- Realtime : Supabase Realtime channels (le `socket_io_client` est dead)
+- Monitoring : `sentry_flutter 8.11`
 
-### Couleurs
-- Primary : `#FF6B35` (orange)
-- Secondary : `#004E89` (bleu)
+### Features actuelles
 
-### Features
-
-| Feature | Statut | Détails |
-|---------|--------|---------|
-| `orders/` | ✅ Complet | BLoC, Repository, Retrofit, WebSocket watch |
-| `auth/` | 🔧 Skeleton | Entités seulement, pages vides, pas de BLoC |
-| `restaurants/` | 🔧 Skeleton | Entity seulement |
-| `menu/` | 🔧 Skeleton | ProductEntity seulement |
-| `payment/` | 🔧 Vide | Stripe importé, rien implémenté |
-| `profile/` | 🔧 Vide | Dossier créé, vide |
-| `admin/` | 🔧 Vide | Dossier créé, vide |
-
-### Fichiers clés
-```
-lib/main.dart                                          # Entry + routing basique
-lib/core/config/app_config.dart                        # URLs, keys, timeouts
-lib/core/di/injection.dart                             # GetIt + Injectable setup
-lib/core/network/api_client.dart                       # Dio + Auth/Error interceptors
-lib/core/services/websocket_service.dart               # Socket.io (watch orders)
-lib/core/utils/location_service.dart                   # GPS + geocoding
-lib/core/utils/notification_service.dart               # FCM + local notifications
-lib/features/orders/domain/entities/order_entity.dart  # Entity (version simplifiée)
-lib/features/orders/presentation/bloc/orders_bloc.dart # BLoC principal
-lib/features/orders/data/datasources/order_remote_datasource.dart  # Retrofit endpoints
-ARCHITECTURE.md                                        # Docs architecture (497 lignes)
-TODO_NEXT_STEPS.md                                     # Roadmap (796 lignes)
-```
-
-### BLoC Orders (seul BLoC complet)
-```
-Events: LoadMyOrders(page) | CreateOrder(params) | CancelOrder(id) | RefreshOrders
-States: OrdersInitial → OrdersLoading → OrdersLoaded(orders, hasMorePages) | OrderCreated | OrdersError
-```
-
-### Commandes
-```bash
-cd win_time_mobilapp
-flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs  # OBLIGATOIRE
-flutter run -d chrome
-flutter build web
-flutter test
-```
+| Feature | Statut |
+|---------|--------|
+| `auth/` | ✅ Login + register (Supabase Auth direct, BLoC dead) + mot de passe oublié |
+| `restaurants/` | ✅ Liste avec géohash + filtres (search, cuisine, prix, ouvert) |
+| `menu/` | ✅ Détail resto + ajout au cart |
+| `cart/` | ✅ BLoC + auto-persist SharedPreferences (TTL 8h) |
+| `checkout/` | ✅ Form + pickup time picker (15min slots) + Stripe PaymentSheet (si key dispo) sinon cash |
+| `orders/` | ✅ Realtime tracking + cancel pending + rating completed + pickup code banner |
+| `profile/` | 🔧 minimal (email + logout) |
 
 ---
 
-## 4. App restaurateur — `win_time_pro_mobilapp/`
+## 5. App Pro — `win_time_pro_mobilapp/`
 
 ### Stack
-- Flutter 3.5 / Dart 3.5
-- State : `flutter_bloc ^8.1.6`
-- DI : `get_it ^8.0.3` + `injectable ^2.4.4`
-- Réseau : `dio ^5.7.0` + `retrofit ^4.4.1`
-- Local : `hive ^2.2.3` + `flutter_secure_storage ^9.2.2` (tokens JWT)
-- Firebase : `firebase_core` + `firebase_auth` + `firebase_messaging`
-- Temps réel : `socket_io_client ^2.0.3`
-- Charts : `fl_chart ^0.69.2` + `syncfusion_flutter_charts ^28.1.38`
-- Animations : `lottie ^3.2.1`
+- Flutter 3.32.x / Dart >=3.8
+- State : `flutter_bloc 8.1.6`
+- DI : `ServiceLocator` manuel (pas de GetIt — visibilité explicite)
+- Routing : `Navigator` (pas de go_router — connu, voir audit S1.2)
+- Backend : `supabase_flutter 2.8`
+- Local : `flutter_secure_storage` (JWT) + `hive`
+- Charts : `fl_chart` + `syncfusion_flutter_charts`
+- Notifications : `firebase_messaging` (lazy)
+- Realtime : Supabase Realtime channels
+- Crash : `sentry_flutter 8.11` (init via `runWithSentry`)
+- Service mode : `wakelock_plus 1.2` (écran reste allumé pendant le service)
 
-### Couleurs (différentes de l'app client)
-- Primary : `#2563EB` (bleu)
-- Secondary : `#10B981` (vert)
-- Accent : `#F59E0B` (orange)
-- Status commandes : pending=jaune, accepted=bleu, preparing=violet, ready=vert, completed=gris, cancelled=rouge
+### Features actuelles
 
-### Features
-
-| Feature | Entités | BLoC | Data layer | Pages |
-|---------|---------|------|------------|-------|
-| `auth/` | ✅ UserEntity | ✅ 7 events/7 states | ❌ Vide | ❌ Vide |
-| `orders/` | ✅ OrderEntity riche | ✅ 10 events/8 states | ❌ Vide | ❌ Vide |
-| `menu/` | ✅ ProductEntity + CategoryEntity | ❌ | ❌ | ❌ |
-| `profile/` | ✅ RestaurantEntity complet | ❌ | ❌ | ❌ |
-| `statistics/` | ✅ StatisticsEntity nested | ❌ | ❌ | ❌ |
-| `dashboard/` | ❌ | ❌ | ❌ | ❌ |
-
-**Note importante** : `main.dart` est en mode démo hardcodé (login: `demo@restaurant.com` / `password`, 6 commandes fictives). Connecter AuthBloc + OrdersBloc pour passer en mode réel.
-
-### BLoC Auth (complet)
-```
-Events: AuthCheckRequested | AuthLoginRequested | AuthRegisterRequested | AuthLogoutRequested
-        AuthForgotPasswordRequested | AuthResetPasswordRequested | AuthVerifyEmailRequested
-States: AuthInitial | AuthLoading | AuthAuthenticated(user) | AuthUnauthenticated
-        AuthPasswordResetEmailSent | AuthPasswordResetSuccess | AuthEmailVerified | AuthError
-```
-
-### BLoC Orders
-```
-Events: LoadActiveOrders | LoadHistory | AcceptOrder | RejectOrder | MarkReady | Complete
-        OrderNewReceived (depuis WebSocket) | RefreshOrders
-States: OrdersInitial | OrdersLoading | OrdersLoaded(orders)
-        + Getters: pendingOrders / acceptedOrders / preparingOrders / readyOrders
-        OrdersHistoryLoaded | OrdersActionInProgress | OrderActionSuccess | OrderNewReceivedNotification | OrdersError
-```
-
-### WebSocket (app restaurateur)
-```
-Rejoint room : 'restaurant:{restaurantId}'
-Reçoit :
-  'new_order'         → push notification + OrderNewReceived event → BLoC
-  'order_updated'     → mise à jour commande (client a modifié)
-  'order_cancelled'   → client a annulé
-  'menu_updated'      → menu changé depuis autre device
-  'restaurant_updated'→ infos changées depuis autre device
-```
-
-### Fichiers clés
-```
-lib/main.dart                                           # Démo screens (1000 lignes)
-lib/core/constants/api_constants.dart                   # URLs + tous les endpoints
-lib/core/constants/app_constants.dart                   # Clés storage, config
-lib/core/network/dio_client.dart                        # Dio + interceptors JWT
-lib/core/services/websocket_service.dart                # Socket.IO (room restaurant)
-lib/core/services/notification_service.dart             # Firebase + local (fullScreenIntent)
-lib/core/theme/app_colors.dart                          # Palette + getOrderStatusColor()
-lib/features/orders/domain/entities/order_entity.dart   # Entity riche (30+ champs)
-lib/features/auth/presentation/bloc/auth_bloc.dart      # BLoC auth complet
-lib/features/orders/presentation/bloc/orders_bloc.dart  # BLoC orders complet
-README.md                                               # Setup complet
-README_ARCHITECTURE.md                                  # Architecture détaillée
-COMMANDS.md                                             # Commandes utiles
-```
-
-### Commandes
-```bash
-cd win_time_pro_mobilapp
-flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs  # OBLIGATOIRE
-flutter run -d chrome
-flutter build apk --release
-flutter test
-```
+| Feature | Statut |
+|---------|--------|
+| `auth/` | ✅ Login Supabase + reset password + demo panel (kDebugMode-only) |
+| `dashboard/` | ✅ Realtime stream `wintime.orders` filtré par mon resto |
+| `menu/` | ✅ CRUD catégories + produits + photos Storage |
+| `profile/` (Mon Restaurant) | ✅ Form complet, photos, business hours editor |
+| `orders/history/` | ✅ `OrderHistoryPage` avec filtres + pagination |
+| `orders/pickup_verify/` | ✅ `PickupCodeVerifySheet` valide le code 6 chiffres → complete |
+| `service_mode/` | ✅ Toggle wakelock dans le kebab dashboard |
+| `statistics/` | 🔧 entity seulement — UI en backlog Sprint 2 |
 
 ---
 
-## 5. Package partagé — `packages/shared_core/`
+## 6. Package partagé — `packages/shared_core/`
 
-> Tout ce qui doit rester **cohérent** entre les 2 apps va ici.
-
-### Exports complets
-```dart
-// Entités domaine
-UserEntity       // id, email, firstName, lastName, phone, role, isActive...
-OrderEntity      // id, orderNumber, items, status, amounts, timeline...
-OrderItemEntity  // productId, quantity, unitPrice, options...
-CustomerInfo     // name, phoneNumber, email
-
-// Enums (avec extensions FR + méthodes)
-UserRole         // client | restaurantOwner | restaurantManager | restaurantStaff | admin
-OrderStatus      // pending | accepted | preparing | ready | completed | cancelled | rejected
-PaymentStatus    // pending | paid | failed | refunded
-PaymentMethod    // creditCard | cash | paypal | applePay | googlePay | other
-
-// Erreurs (pattern Either)
-Failure + sous-classes   // Server/Network/Cache/Auth/Authz/NotFound/Validation/Api/WS/Unknown
-AppException + sous-classes
-
-// Résultat API (sealed)
-ApiResult<T>     // .success(data) | .failure(failure) — avec fold/when/map
-
-// WebSocket
-WebSocketService (interface abstraite)
-WebSocketConfig, WebSocketState, WebSocketEvents
-
-// Constantes
-ApiConstants     // baseUrl, wsBaseUrl, timeouts, endpoints
-StorageKeys      // accessToken, refreshToken, cachedUser, cachedRestaurant...
-
-// Utils
-DateFormatter    // formatFullDate, formatRelative, formatDuration...
-Validators       // validateEmail, validatePassword, validatePhoneNumber...
-```
-
-### Règle d'utilisation
-- Ajouter dans shared_core : entités métier, enums, contrats d'erreur, interfaces de service
-- Garder dans chaque app : implémentations concrètes (Repository, DataSource, BLoC, UI)
+Voir la version précédente — inchangé sauf :
+- Le `WebSocketService` abstract est devenu un stub vide (audit S11.3.5). Sprint 2 le supprime.
+- Les entités/enums restent autoritatives ; les apps qui maintiennent leurs propres copies (Client `OrderEntity`, Pro `OrderEntity` simplifiés) sont en cours d'unification.
 
 ---
 
-## 6. Backend — API contractuelle
+## 7. Backend — Schéma `wintime` (post-migrations 040/050/060/070)
 
-### URLs
-```
-REST : https://api.wintime.com/v1
-WS   : wss://ws.wintime.com
-```
+### Tables
 
-### Endpoints par domaine
+| Table | Colonnes notables (additions post-audit) |
+|-------|------------------------------------------|
+| `user_profiles` | id, email, role, is_active, **fcm_token** (à ajouter) |
+| `restaurants` | + `siret`, `tva_intracommunautaire`, `legal_form`, `rcs_number`, `capital_social_cents`, `stripe_account_id`, `stripe_charges_enabled`, `stripe_payouts_enabled` |
+| `categories` | inchangé |
+| `products` | + `tax_rate NUMERIC(5,4)` (5.5% / 10% / 20% par CGI 279 m bis) |
+| `orders` | + `tax_breakdown JSONB`, `pickup_code`, `stripe_payment_intent_id`, `stripe_charge_id`, `payment_captured_at`, `invoice_number`, `saved_vs_aggregator_cents` (GENERATED) |
+| `restaurant_members` | NEW — multi-staff (owner/manager/staff) |
+| `order_number_seq` | NEW — séquence par resto/année |
+| `invoice_number_seq` | NEW — séquence L441-9 compliant |
 
-**Auth**
-```
-POST /auth/login
-POST /auth/register
-POST /auth/logout
-POST /auth/refresh
-POST /auth/forgot-password
-POST /auth/reset-password
-POST /auth/verify-email
-```
+### Triggers / fonctions
+- `wintime.recompute_and_validate_order_amounts()` — BEFORE INSERT on orders
+- `wintime.fill_order_number()` — BEFORE INSERT
+- `wintime.gen_pickup_code()` — BEFORE INSERT
+- `wintime.enforce_order_status_transition()` — BEFORE UPDATE (state machine)
+- `wintime.fill_invoice_number()` — BEFORE UPDATE OF status (alloue FAC-... uniquement quand status passe à 'completed')
+- `wintime.anonymize_user(target_uid)` — fonction SECURITY DEFINER pour GDPR Art. 17
 
-**Restaurants**
-```
-GET  /restaurants/{id}
-PUT  /restaurants/{id}
-POST /restaurants/{id}/toggle-availability
-```
+### RLS
+- Tightened: `products_read` et `categories_read` exigent maintenant `is_active AND is_approved` sur le restaurant (anti-scraping cross-tenant).
+- `orders_owner_update` a maintenant un `WITH CHECK` qui interdit la mutation de `restaurant_id` / `customer_id` / `order_number`.
+- `restaurant_members` permet aux owners de gérer leur équipe; les managers/staff ne sont pas encore branchés au reste des policies (Sprint 3 — voir ADR-001 dans `WINTIME_EXECUTION_PLAN.md`).
 
-**Menu**
-```
-GET|POST        /menu/categories
-PUT|DELETE      /menu/categories/{id}
-GET|POST        /menu/products
-PUT|DELETE      /menu/products/{id}
-POST            /menu/products/{id}/toggle-availability
-```
-
-**Orders**
-```
-POST   /orders                      (client: créer)
-GET    /orders/me                   (client: mes commandes)
-GET    /orders/active               (restaurant: commandes actives)
-GET    /orders/history              (restaurant: historique)
-GET    /orders/{id}
-PATCH  /orders/{id}/cancel          (client)
-PATCH  /orders/{id}/status          (générique)
-PATCH  /orders/{id}/mark-ready
-POST   /orders/{id}/accept          (restaurant)
-POST   /orders/{id}/reject          (restaurant)
-POST   /orders/{id}/ready           (restaurant)
-POST   /orders/{id}/complete        (restaurant)
-```
-
-**Stats / Misc**
-```
-GET  /statistics/dashboard
-GET  /statistics/sales
-GET  /statistics/performance
-POST /notifications/fcm-token
-POST /upload/image
-GET  /reviews/restaurant/{id}
-POST /reviews/{id}/respond
-```
-
-### WebSocket — événements
-
-| Événement | Direction | Payload |
-|-----------|-----------|---------|
-| `join_user` | client → WS | userId |
-| `join_restaurant` | resto → WS | restaurantId |
-| `watch_order` | client → WS | orderId |
-| `unwatch_order` | client → WS | orderId |
-| `new_order` | WS → resto | OrderEntity |
-| `order_status_updated` | WS → client | {order_id, status} |
-| `order_ready` | WS → client | {order_id} |
-| `order_cancelled` | WS → les 2 | {order_id, reason} |
-| `menu_updated` | WS → resto | {restaurant_id, products} |
-| `restaurant_updated` | WS → les 2 | {restaurant_id} |
+### Edge Functions (Supabase / Deno)
+- `stripe-webhook` — vérifie signature Stripe, flippe `payment_status` server-side
+- `create-payment-intent` — crée le PaymentIntent avec platform-fee 2.5% + transfer Connect
+- `stripe-connect-onboard` — génère l'AccountLink pour l'onboarding KYC restaurateur
 
 ---
 
-## 7. État actuel & roadmap
+## 8. Configuration `--dart-define`
 
-### Tableau de bord
+| Var | Apps | Quand |
+|-----|------|-------|
+| `STRIPE_PUBLISHABLE_KEY` | Client | Build release / CI |
+| `STRIPE_KEY` | Client (legacy alias) | Build release |
+| `GOOGLE_MAPS_KEY` | Client | Build release |
+| `SENTRY_DSN_PRO` | Pro | Build release |
+| `API_BASE_URL` / `WS_BASE_URL` | Both (legacy, dead) | À supprimer en Sprint 2 |
 
-| Couche | win_time_mobilapp | win_time_pro_mobilapp |
-|--------|-------------------|------------------------|
-| Architecture | ✅ Clean + BLoC | ✅ Clean + BLoC |
-| DI (GetIt/Injectable) | ✅ | ✅ |
-| API client (Dio) | ✅ | ✅ |
-| WebSocket service | ✅ | ✅ |
-| Notifications | ✅ skeleton | ✅ skeleton |
-| Feature Auth | 🔧 entities only | ✅ BLoC / ❌ data+UI |
-| Feature Orders | ✅ complet | ✅ BLoC / ❌ data+UI |
-| Feature Menu | 🔧 entity only | ✅ entity / ❌ BLoC+data+UI |
-| Feature Restaurants/Profile | 🔧 entity only | ✅ entity / ❌ BLoC+data+UI |
-| Feature Payment (Stripe) | ❌ | N/A |
-| Feature Statistics | N/A | ✅ entity / ❌ BLoC+data+UI |
-| Firebase (google-services.json) | ❌ manquant | ❌ manquant |
-| Tests | ❌ | ❌ |
-
-### Prochaines étapes recommandées
-
-**Phase 1 — Fondations (blocker)**
-1. Ajouter `google-services.json` (Android) + `GoogleService-Info.plist` (iOS) dans les 2 apps
-2. Implémenter `auth` data layer (models, datasource, repository) dans les 2 apps
-3. Connecter AuthBloc aux pages de login dans les 2 apps
-
-**Phase 2 — Flux principal**
-4. Implémenter `restaurants/` + `menu/` (client) — liste, détail, recherche géo
-5. Implémenter `menu/` (restaurateur) — CRUD catégories + produits
-6. Implémenter cart local (Hive) côté client
-7. Intégrer Stripe payment intent (client)
-
-**Phase 3 — Temps réel & Polish**
-8. Connecter OrdersBloc aux vraies datasources dans les 2 apps
-9. Activer WebSocket dans les 2 apps (remplacer demos)
-10. Implémenter Statistics feature (restaurateur) avec fl_chart
-11. Tests BLoC + Repository
+L'anon key Supabase est hardcodée dans `wintime_supabase_config.dart` (correct — RLS protège).
 
 ---
 
-## 8. Gotchas & pièges connus
+## 9. CI / CD
 
-| Problème | Impact | Solution |
-|----------|--------|----------|
-| `google-services.json` manquant | Firebase/FCM non fonctionnel | Ajouter le fichier config Firebase dans chaque app |
-| `mobile_scanner` désactivé (client) | Scan QR impossible | Conflit `GoogleUtilities` — réactiver quand résolu |
-| Code generation obligatoire | Build impossible sans | `flutter pub run build_runner build --delete-conflicting-outputs` |
-| 2 `OrderEntity` différentes | Confusion client vs shared_core | `win_time_mobilapp` a sa propre version simplifiée. À terme, migrer vers `shared_core.OrderEntity` |
-| `main.dart` pro = démo hardcodé | N'utilise pas les vrais BLoCs | Réécrire en connectant `AuthBloc` + `OrdersBloc` |
-| `socket_io_client` versions différentes | Incompatibilité potentielle | Client : `^3.0.1` / Pro : `^2.0.3` — à aligner |
-| Token storage | Tokens en mémoire seulement jusqu'à auth implémenté | Utiliser `flutter_secure_storage` (déjà dans pubspec pro) |
-| Firebase Auth vs JWT | 2 stratégies d'auth présentes dans pro | Choisir : Firebase Auth OU JWT backend. Éviter les 2. |
+| Workflow | Cible |
+|---|---|
+| `ci.yml` | `flutter analyze` + `flutter test` sur les 2 apps |
+| `deploy_client.yml` | Cloudflare Pages (web) + **AAB** Android (artefact) |
+| `deploy_pro.yml` | Cloudflare Pages (web) + **AAB** Android (artefact) |
+| `ios_client.yml` | Fastlane → TestFlight |
+| `ios_pro.yml` | Fastlane → TestFlight |
+| `asc_check.yml` | Thermomètre ASC manuel |
+
+**Web builds** : `--tree-shake-icons --no-source-maps` (post-audit S12.4).
+**Android** : AAB seul, **debug-info** uploadé séparément pour mapping crash.
+**iOS** : `cert(force:true)` + `concurrency: ios-signing` (matlab cert dance documenté dans `docs/TESTFLIGHT_LOG.md`).
 
 ---
 
-## 9. Structure monorepo
+## 10. Documentation à lire
 
-```
-win-time/
-├── packages/
-│   └── shared_core/          # Package partagé
-├── win_time_mobilapp/        # App client
-├── win_time_pro_mobilapp/    # App restaurateur
-├── legacy/                   # Archives (ne pas toucher)
-├── GUIDE_PACKAGE_PARTAGE.md  # Comment utiliser shared_core
-├── RESUME_PACKAGE_PARTAGE.md # Résumé de la refacto package
-└── WINTIME.md                # CE FICHIER
-```
+| Fichier | Pour |
+|---|---|
+| `docs/ONBOARDING.md` | Premier setup en < 2h pour un nouveau dev |
+| `docs/RUNBOOK_RESTORE.md` | DR — restaurer depuis backup R2 |
+| `docs/UNIVERSAL_LINKS_SETUP.md` | Setup deep-links iOS + Android |
+| `docs/TESTFLIGHT_LOG.md` | Logbook de la guerre TestFlight (avril-mai 2026) |
+| `WINTIME_AUDIT_REPORT.md` | Audit 360° (1427 lignes, 30 🔴 + 74 🟠 + 37 🟡) |
+| `WINTIME_EXECUTION_PLAN.md` | Plan d'exécution post-audit + sign-off |
+| `SETUP_SUPABASE.md` | Setup base de données |
+| `GUIDE_PACKAGE_PARTAGE.md` | Comment utiliser shared_core |
+| `web/legal/*.html` | Mentions légales / CGV / Privacy / Cookies (templates à compléter) |
+
+---
+
+## 11. Gotchas connus (post-audit)
+
+| Problème | Statut |
+|----------|--------|
+| `socket_io_client` dead post-Supabase realtime | À supprimer Sprint 2 (T38) |
+| Dead Dio stub kept-alive dans `injection.dart` | Marqué `dead-api.invalid`. Suppression Sprint 2 (T39) |
+| Client app a son propre `OrderEntity` (vs shared_core) | À unifier Sprint 2 |
+| Pro `_Order` model parallèle | Renommé `pickupCode`. Migration vers `shared_core.OrderEntity` Sprint 2 |
+| `ServiceLocator.currentRestaurantId` global mutable | À migrer vers BLoC Sprint 3 |
+| `mobile_scanner` désactivé | Conflit GoogleUtilities — à réactiver pour scanner pickup-code |
+| `manager`/`staff` enum values | Backé par `restaurant_members` table — RLS à étendre Sprint 3 (ADR-001) |
+| Bundle Android `com.example.win_time` | À renommer avant Play submission (audit T19) |
+| Demo accounts | Gatés `kDebugMode` — tree-shakés en release ✓ |
+
+---
+
+## 12. Comptes de démo (dev uniquement)
+
+Mêmes que dans `SETUP_SUPABASE.md` (8 utilisateurs seedés, password `demo-pass-1234`). Les boutons "connexion rapide démo" n'apparaissent qu'en debug build.
+
+---
+
+## 13. Sprint plan
+
+Voir `WINTIME_EXECUTION_PLAN.md` — Sprint 0 fermé (sauf user-actions PAT / domain / keystore / bundle-id / Stripe account / Better Stack monitor), Sprint 1 en cours.

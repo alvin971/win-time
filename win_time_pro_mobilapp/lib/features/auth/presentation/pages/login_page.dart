@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -271,9 +272,14 @@ class _LoginPageState extends State<LoginPage> {
                       isLoading: isLoading,
                     ),
                     const SizedBox(height: 20),
-                    // 🧪 TEST — comptes de démo (à retirer avant release)
-                    const DemoLoginPanel(),
-                    const SizedBox(height: 24),
+                    // 🧪 Demo accounts panel — DEBUG BUILDS ONLY.
+                    // kDebugMode is a `const true` in debug and `const false`
+                    // in release, so the panel is tree-shaken from release
+                    // bundles entirely. Audit S2.2.3.
+                    if (kDebugMode) ...[
+                      const DemoLoginPanel(),
+                      const SizedBox(height: 24),
+                    ],
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
