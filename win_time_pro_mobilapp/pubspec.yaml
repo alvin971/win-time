@@ -97,6 +97,16 @@ dependencies:
   # QR Code
   qr_flutter: ^4.1.0
 
+  # Crash reporting (audit S6.2.7 — Pro was missing)
+  sentry_flutter: ^8.11.0
+
+  # Keep the device awake during a service. Pro must not sleep while waiting
+  # for orders (audit S12.4).
+  wakelock_plus: ^1.2.8
+
+  # url_launcher for tel: / mailto: / privacy-policy links.
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

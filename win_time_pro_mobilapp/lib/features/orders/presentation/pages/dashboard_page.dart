@@ -6,8 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/pages/splash_page.dart';
+import '../../../../core/services/service_mode.dart';
 import '../../../menu/presentation/pages/menu_page.dart';
 import '../../../profile/presentation/pages/my_restaurant_page.dart';
+import 'order_history_page.dart';
 import '../../domain/entities/order_entity.dart' as domain;
 
 // ---------------------------------------------------------------------------
@@ -24,7 +26,7 @@ class _Order {
   /// UUID Postgres dans la table wintime.orders. Utilisé pour les UPDATEs.
   final String remoteId;
   final String customerName;
-  final String tableNumber;
+  final String pickupCode;
   final List<_OrderItem> items;
   final _OrderStatus status;
   final DateTime orderTime;
@@ -34,7 +36,7 @@ class _Order {
     required this.id,
     required this.remoteId,
     required this.customerName,
-    required this.tableNumber,
+    required this.pickupCode,
     required this.items,
     required this.status,
     required this.orderTime,
@@ -129,7 +131,11 @@ class _DashboardPageState extends State<DashboardPage> {
     return _Order(
       id: '#${o.orderNumber}',
       customerName: o.customerInfo.name,
-      tableNumber: 'Pickup',
+      // pickup_code is populated by the server trigger
+      // `wintime.gen_pickup_code` from migration 070; surface it via
+      // OrderEntity once shared_core exposes the column. For now the
+      // placeholder makes the click-&-collect domain semantics correct.
+      pickupCode: 'Click & Collect',
       items: o.items
           .map((it) => _OrderItem(
                 name: it.productName,
@@ -428,13 +434,33 @@ class _DashboardPageState extends State<DashboardPage> {
                 case 'menu':
                   _openMyMenu();
                   break;
+                case 'history':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const OrderHistoryPage()),
+                  );
+                  break;
+                case 'service_mode':
+                  ServiceMode.toggle().then((on) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            on
+                                ? 'Mode service : écran allumé en continu'
+                                : 'Mode service désactivé',
+                          ),
+                        ),
+                      );
+                    }
+                  });
+                  break;
                 case 'logout':
                   _signOut();
                   break;
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
+            itemBuilder: (_) => [
+              const PopupMenuItem(
                 value: 'restaurant',
                 child: ListTile(
                   leading: Icon(Icons.storefront),
@@ -442,7 +468,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'menu',
                 child: ListTile(
                   leading: Icon(Icons.menu_book),
@@ -450,8 +476,32 @@ class _DashboardPageState extends State<DashboardPage> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'history',
+                child: ListTile(
+                  leading: Icon(Icons.history),
+                  title: Text('Historique'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               PopupMenuItem(
+                value: 'service_mode',
+                child: ListTile(
+                  leading: Icon(
+                    ServiceMode.isActive
+                        ? Icons.brightness_high
+                        : Icons.brightness_low,
+                  ),
+                  title: Text(
+                    ServiceMode.isActive
+                        ? 'Désactiver mode service'
+                        : 'Activer mode service',
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
                   leading: Icon(Icons.logout, color: Colors.red),
@@ -675,9 +725,9 @@ class _OrderCard extends StatelessWidget {
                       child: Text(order.id, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
                     ),
                     const SizedBox(width: 12),
-                    Icon(Icons.table_restaurant, size: 18, color: Colors.grey[600]),
+                    Icon(Icons.confirmation_number_outlined, size: 18, color: Colors.grey[600]),
                     const SizedBox(width: 4),
-                    Text(order.tableNumber, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+                    Text(order.pickupCode, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
                   ],
                 ),
                 Text(_formatTime(), style: TextStyle(color: Colors.grey[600], fontSize: 12)),

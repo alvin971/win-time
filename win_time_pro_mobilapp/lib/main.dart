@@ -10,6 +10,7 @@ import 'core/config/wintime_supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/di/injection_container.dart';
+import 'core/observability/sentry_init.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
 
@@ -93,7 +94,7 @@ void main() {
       ),
     );
 
-    runApp(const WinTimeProApp());
+    await runWithSentry(() => const WinTimeProApp());
   }, (error, stack) {
     debugPrint('Async error caught by runZonedGuarded: $error\n$stack');
   });
