@@ -80,6 +80,16 @@
       "lastName": "Saade",
       "phoneNumber": "+33612345608",
       "ownsRestaurantId": "demo-rest-etoile"
+    },
+    {
+      "uid": "owner-tastycrousty",
+      "email": "tastycrousty@wintime.test",
+      "password": "demo-pass-1234",
+      "role": "restaurantOwner",
+      "firstName": "Galo",
+      "lastName": "Diallo",
+      "phoneNumber": "+33612345609",
+      "ownsRestaurantId": "demo-rest-crousty"
     }
   ],
 
@@ -241,6 +251,52 @@
         "saturday":  { "isOpen": true,  "morning": { "openTime": "11:00", "closeTime": "23:30" } },
         "sunday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "22:00" } }
       }
+    },
+    {
+      "id": "demo-rest-crousty",
+      "ownerId": "owner-tastycrousty",
+      "name": "Tasty Crousty",
+      "description": "Le seul, le numéro 1. Une barquette chaude, du riz fondant, du poulet frit ultra croustillant et une sauce maison devenue culte. Halal.",
+      "slogan": "Le bonheur est dans les choses simples",
+      "cuisineType": "fastFood",
+      "priceRange": "budget",
+      "address": {
+        "street": "51 Boulevard du Temple",
+        "city": "Paris",
+        "postalCode": "75003",
+        "country": "France",
+        "latitude": 48.8636,
+        "longitude": 2.3656
+      },
+      "contactInfo": {
+        "email": "republique@tastycrousty.io",
+        "phoneNumber": "+33180890900",
+        "websiteUrl": "https://tastycrousty.io"
+      },
+      "logoUrl": "https://framerusercontent.com/images/CZgliqdqyEKb8TqyIS8E4a24zQ.png?width=800",
+      "bannerUrl": "https://framerusercontent.com/images/Jx5vE9sbrIj3Ms3BgDWyY8gkKDY.jpg?width=1440",
+      "galleryImages": [
+        "https://framerusercontent.com/images/czEGp1Jjh5lP7T3il02rducNOU.jpg?width=1200",
+        "https://framerusercontent.com/images/kZ8WPae3aPEVVtC1VN0aGetn9Y.jpg?width=1200",
+        "https://framerusercontent.com/images/CwVc0W8funmwQnviLWUhmHlrDk.jpg?width=1200",
+        "https://framerusercontent.com/images/HSbhjia4i84tEHIG3GC0CftEP0.jpg?width=1200",
+        "https://framerusercontent.com/images/M7udv2tWamNtkYsHxkevbhnquiE.jpg?width=1080"
+      ],
+      "averagePreparationTime": 12,
+      "isActive": true,
+      "isApproved": true,
+      "acceptingOrders": true,
+      "rating": 4.4,
+      "totalReviews": 9120,
+      "businessHours": {
+        "monday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:00" } },
+        "tuesday":   { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:00" } },
+        "wednesday": { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:00" } },
+        "thursday":  { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:00" } },
+        "friday":    { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:59" } },
+        "saturday":  { "isOpen": true,  "morning": { "openTime": "11:30", "closeTime": "23:59" } },
+        "sunday":    { "isOpen": true,  "morning": { "openTime": "12:00", "closeTime": "23:00" } }
+      }
     }
   ],
 
@@ -307,6 +363,62 @@
         { "id": "prod-bru-chich",    "categoryId": "cat-bru-grillades", "name": "Brochette d'agneau",     "description": "Chich-taouk d'agneau mariné aux épices, riz pilaf, salade.", "price": 14.00, "allergens": [], "labels": ["bestseller"] },
         { "id": "prod-bru-poulet",   "categoryId": "cat-bru-grillades", "name": "Chich-taouk poulet",     "description": "Poulet mariné citron, ail, sumac, riz et grillades de légumes.", "price": 12.50, "allergens": ["milk"], "labels": [] },
         { "id": "prod-bru-baklava",  "categoryId": "cat-bru-douceurs",  "name": "Assiette de baklavas",   "description": "Pâte filo, pistaches, sirop de fleur d'oranger.", "price": 6.50, "allergens": ["gluten", "nuts"], "labels": ["homemade"] }
+      ]
+    },
+    "demo-rest-crousty": {
+      "categories": [
+        { "id": "cat-cro-crousty",  "name": "Le Crousty",     "displayOrder": 1 },
+        { "id": "cat-cro-burgers",  "name": "Smash Burgers",  "displayOrder": 2 },
+        { "id": "cat-cro-texmex",   "name": "Tex-Mex",        "displayOrder": 3 },
+        { "id": "cat-cro-boxes",    "name": "Boxes & Menus",  "displayOrder": 4 },
+        { "id": "cat-cro-extras",   "name": "Extras",         "displayOrder": 5 },
+        { "id": "cat-cro-sauces",   "name": "Sauces Maison",  "displayOrder": 6 },
+        { "id": "cat-cro-boissons", "name": "Boissons",       "displayOrder": 7 },
+        { "id": "cat-cro-desserts", "name": "Desserts",       "displayOrder": 8 }
+      ],
+      "products": [
+        { "id": "prod-cro-blanc",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Blanche Maison", "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce blanche.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://framerusercontent.com/images/JUaKNW6PKXH6cIgaECqy00UFkc.jpg?width=800" },
+        { "id": "prod-cro-curry",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Curry Maison",   "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce curry.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://framerusercontent.com/images/R4GRyCzkBNep4u42aS66iOmA.jpg?width=800" },
+        { "id": "prod-cro-mixte",    "categoryId": "cat-cro-crousty",  "name": "Crousty Mixte (Blanche/Curry)", "description": "Le best-seller : riz fondant, poulet pané maison, double sauce blanche + curry, oignons frits, persil.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://framerusercontent.com/images/PPTC1BRF6J84ZttMUJAyq35TXa4.jpg?width=800" },
+
+        { "id": "prod-cro-smash1",   "categoryId": "cat-cro-burgers",  "name": "Smash Burger Simple",          "description": "Steak smashé 100% bœuf halal, cheddar fondu, oignons grillés, sauce signature, buns toastés.", "price": 6.50, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-smash2",   "categoryId": "cat-cro-burgers",  "name": "Menu Smash Burger",            "description": "Smash burger + frites maison + boisson au choix.", "price": 8.50, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-tenders",  "categoryId": "cat-cro-texmex",   "name": "Tenders x5",                   "description": "5 tenders de poulet mariné maison, pané maison ultra croustillant. Sauce au choix.", "price": 6.20, "allergens": ["gluten", "milk"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1562967914-608f82629710?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-nems",     "categoryId": "cat-cro-texmex",   "name": "Nems Poulet",                  "description": "Nems croustillants au poulet émincé, légumes, vermicelles. Servis chauds.", "price": 6.20, "allergens": ["gluten", "soy"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-box1",     "categoryId": "cat-cro-boxes",    "name": "Box Crousty",                  "description": "Sandwich poulet curry + frites maison + barquette de riz Crousty M. Ajoute une boisson pour +1€.", "price": 9.90, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-box2",     "categoryId": "cat-cro-boxes",    "name": "Box Du Peuple",                "description": "2 smash burgers (poulet + bœuf), 2 tenders, 2 pilons de poulet, grosse portion de frites, sauce et boisson incluses. Pour partager !", "price": 14.90, "allergens": ["gluten", "milk", "eggs"], "labels": ["chefRecommendation", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-riz",      "categoryId": "cat-cro-extras",   "name": "Barquette Riz Blanc",          "description": "Une barquette de riz blanc fondant cuit minute.", "price": 5.50, "allergens": [], "labels": ["vegan", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-frites",   "categoryId": "cat-cro-extras",   "name": "Frites Maison",                "description": "Frites fraîches, coupées et frites sur place. Servies bien chaudes.", "price": 3.50, "allergens": [], "labels": ["vegan", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-sauce-blc","categoryId": "cat-cro-sauces",   "name": "Sauce Blanche Maison",         "description": "La signature : sauce thaï maison crémeuse, recette secrète.", "price": 0.50, "allergens": ["milk", "eggs"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-sauce-cur","categoryId": "cat-cro-sauces",   "name": "Sauce Curry Maison",           "description": "Curry doux maison, parfumé, légèrement sucré.", "price": 0.50, "allergens": ["milk", "eggs"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-sauce-alg","categoryId": "cat-cro-sauces",   "name": "Sauce Algérienne",             "description": "Mayo, tomate, harissa, paprika fumé. Maison.", "price": 0.50, "allergens": ["eggs", "mustard"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-sauce-sam","categoryId": "cat-cro-sauces",   "name": "Sauce Samouraï",               "description": "Mayonnaise piquante au piment doux. Maison.", "price": 0.50, "allergens": ["eggs"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-sauce-bbq","categoryId": "cat-cro-sauces",   "name": "Sauce BBQ",                    "description": "Barbecue fumé, légèrement sucré.", "price": 0.50, "allergens": ["mustard"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-dada-cola","categoryId": "cat-cro-boissons", "name": "Dada Cola",                    "description": "Cola Dada 33cl. La marque française qui monte.", "price": 1.80, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-dada-zero","categoryId": "cat-cro-boissons", "name": "Dada Cola Zero",               "description": "Cola Dada sans sucres 33cl.", "price": 1.80, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-dada-icet","categoryId": "cat-cro-boissons", "name": "Dada Ice Tea Pêche",           "description": "Thé glacé pêche Dada 33cl.", "price": 1.80, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-dada-cer", "categoryId": "cat-cro-boissons", "name": "Dada Cerise",                  "description": "Soda cerise Dada 33cl. Best-seller maison.", "price": 1.80, "allergens": [], "labels": ["bestseller"], "mainImageUrl": "https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-dada-lyc", "categoryId": "cat-cro-boissons", "name": "Dada Lychee",                  "description": "Soda lychee Dada 33cl. Subtilement fruité.", "price": 1.80, "allergens": [], "labels": ["bestseller"], "mainImageUrl": "https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-eau",      "categoryId": "cat-cro-boissons", "name": "Eau Cristaline 50cl",          "description": "Bouteille d'eau plate Cristaline.", "price": 1.80, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-rb-class", "categoryId": "cat-cro-boissons", "name": "Red Bull Classique",           "description": "Red Bull Energy Drink 25cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-rb-peach", "categoryId": "cat-cro-boissons", "name": "Red Bull Peach",               "description": "Red Bull Edition Pêche 25cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-rb-acai",  "categoryId": "cat-cro-boissons", "name": "Red Bull Açaï (Violet)",       "description": "Red Bull Edition Açaï 25cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-rb-past",  "categoryId": "cat-cro-boissons", "name": "Red Bull Pastèque",            "description": "Red Bull Edition Pastèque 25cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-cal-melon","categoryId": "cat-cro-boissons", "name": "Calypso Triple Melon",         "description": "Soda Calypso Triple Melon 50cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-cal-blue", "categoryId": "cat-cro-boissons", "name": "Calypso Ocean Blue",           "description": "Soda Calypso Ocean Blue 50cl.", "price": 3.50, "allergens": [], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=600&h=600&fit=crop" },
+
+        { "id": "prod-cro-tarte",    "categoryId": "cat-cro-desserts", "name": "Tarte au Daim",                "description": "Tarte gourmande au chocolat et éclats de Daim caramélisés.", "price": 3.70, "allergens": ["gluten", "milk", "nuts"], "labels": ["bestseller"], "mainImageUrl": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-tira-cbs", "categoryId": "cat-cro-desserts", "name": "Tiramisu Caramel Beurre Salé", "description": "Tiramisu maison, mascarpone, biscuits boudoirs, caramel beurre salé.", "price": 3.95, "allergens": ["gluten", "milk", "eggs"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-tira-daim","categoryId": "cat-cro-desserts", "name": "Tiramisu Daim",                "description": "Tiramisu mascarpone, éclats de Daim caramélisés, cacao.", "price": 3.95, "allergens": ["gluten", "milk", "eggs", "nuts"], "labels": ["homemade"], "mainImageUrl": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-misu-fr",  "categoryId": "cat-cro-desserts", "name": "Misu Fraise",                  "description": "Verrine crème mascarpone et fraises fraîches.", "price": 4.30, "allergens": ["gluten", "milk", "eggs"], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-misu-or",  "categoryId": "cat-cro-desserts", "name": "Misu Oreo",                    "description": "Verrine crème mascarpone, brisures d'Oreo.", "price": 4.30, "allergens": ["gluten", "milk", "eggs"], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-misu-pi",  "categoryId": "cat-cro-desserts", "name": "Misu Pistache",                "description": "Verrine crème mascarpone parfumée à la pistache, éclats de pistache.", "price": 4.30, "allergens": ["gluten", "milk", "eggs", "nuts"], "labels": [], "mainImageUrl": "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-misu-tw",  "categoryId": "cat-cro-desserts", "name": "Misu Twix",                    "description": "Verrine crème mascarpone, morceaux de Twix, caramel.", "price": 4.30, "allergens": ["gluten", "milk", "eggs", "nuts"], "labels": ["bestseller"], "mainImageUrl": "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=600&h=600&fit=crop" }
       ]
     }
   }
