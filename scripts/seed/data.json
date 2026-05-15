@@ -273,12 +273,14 @@
         "phoneNumber": "+33180890900",
         "websiteUrl": "https://tastycrousty.io"
       },
-      "logoUrl": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&h=400&fit=crop",
-      "bannerUrl": "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=1200&h=675&fit=crop",
+      "logoUrl": "https://framerusercontent.com/images/CZgliqdqyEKb8TqyIS8E4a24zQ.png?width=800",
+      "bannerUrl": "https://framerusercontent.com/images/Jx5vE9sbrIj3Ms3BgDWyY8gkKDY.jpg?width=1440",
       "galleryImages": [
-        "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=800&h=600&fit=crop",
-        "https://images.unsplash.com/photo-1562967914-608f82629710?w=800&h=600&fit=crop",
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=600&fit=crop"
+        "https://framerusercontent.com/images/czEGp1Jjh5lP7T3il02rducNOU.jpg?width=1200",
+        "https://framerusercontent.com/images/kZ8WPae3aPEVVtC1VN0aGetn9Y.jpg?width=1200",
+        "https://framerusercontent.com/images/CwVc0W8funmwQnviLWUhmHlrDk.jpg?width=1200",
+        "https://framerusercontent.com/images/HSbhjia4i84tEHIG3GC0CftEP0.jpg?width=1200",
+        "https://framerusercontent.com/images/M7udv2tWamNtkYsHxkevbhnquiE.jpg?width=1080"
       ],
       "averagePreparationTime": 12,
       "isActive": true,
@@ -375,9 +377,9 @@
         { "id": "cat-cro-desserts", "name": "Desserts",       "displayOrder": 8 }
       ],
       "products": [
-        { "id": "prod-cro-blanc",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Blanche Maison", "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce blanche.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&h=600&fit=crop" },
-        { "id": "prod-cro-curry",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Curry Maison",   "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce curry.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&h=600&fit=crop" },
-        { "id": "prod-cro-mixte",    "categoryId": "cat-cro-crousty",  "name": "Crousty Mixte (Blanche/Curry)", "description": "Le best-seller : riz fondant, poulet pané maison, double sauce blanche + curry, oignons frits, persil.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&h=600&fit=crop" },
+        { "id": "prod-cro-blanc",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Blanche Maison", "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce blanche.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://framerusercontent.com/images/JUaKNW6PKXH6cIgaECqy00UFkc.jpg?width=800" },
+        { "id": "prod-cro-curry",    "categoryId": "cat-cro-crousty",  "name": "Crousty Sauce Curry Maison",   "description": "Riz blanc fondant, sauce thaï maison, oignons frits, persil, filet de poulet pané maison et sauce curry.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://framerusercontent.com/images/R4GRyCzkBNep4u42aS66iOmA.jpg?width=800" },
+        { "id": "prod-cro-mixte",    "categoryId": "cat-cro-crousty",  "name": "Crousty Mixte (Blanche/Curry)", "description": "Le best-seller : riz fondant, poulet pané maison, double sauce blanche + curry, oignons frits, persil.", "price": 11.60, "allergens": ["gluten", "milk", "eggs"], "labels": ["bestseller", "halal"], "mainImageUrl": "https://framerusercontent.com/images/PPTC1BRF6J84ZttMUJAyq35TXa4.jpg?width=800" },
 
         { "id": "prod-cro-smash1",   "categoryId": "cat-cro-burgers",  "name": "Smash Burger Simple",          "description": "Steak smashé 100% bœuf halal, cheddar fondu, oignons grillés, sauce signature, buns toastés.", "price": 6.50, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&fit=crop" },
         { "id": "prod-cro-smash2",   "categoryId": "cat-cro-burgers",  "name": "Menu Smash Burger",            "description": "Smash burger + frites maison + boisson au choix.", "price": 8.50, "allergens": ["gluten", "milk", "eggs"], "labels": ["halal"], "mainImageUrl": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=600&fit=crop" },
